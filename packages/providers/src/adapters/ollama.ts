@@ -114,6 +114,29 @@ export class OllamaProvider implements LLMProvider {
           }
         }
       }
+
+      // Flush remaining buffer
+      if (buffer.trim()) {
+        try {
+          const data = JSON.parse(buffer);
+          if (data.message?.content) {
+            yield { type: 'text_delta', content: data.message.content };
+          }
+          if (data.done) {
+            yield {
+              type: 'usage',
+              usage: {
+                inputTokens: data.prompt_eval_count || 0,
+                outputTokens: data.eval_count || 0,
+                totalTokens: (data.prompt_eval_count || 0) + (data.eval_count || 0),
+              },
+            };
+          }
+        } catch {
+          // skip malformed JSON
+        }
+      }
+
       yield { type: 'done' };
     } catch (error) {
       yield { type: 'error', error: (error as Error).message };

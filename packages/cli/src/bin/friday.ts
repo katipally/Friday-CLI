@@ -235,6 +235,44 @@ program
         process.exit(0);
       });
 
+      // Non-interactive / headless mode (for piped input or CI/CD)
+      if (options.nonInteractive || !process.stdin.isTTY) {
+        // Read from stdin and process each line
+        const readline = await import('node:readline');
+        const rl = readline.createInterface({ input: process.stdin });
+        
+        for await (const line of rl) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          
+          // Handle slash commands
+          if (trimmed.startsWith('/')) {
+            const parts = trimmed.slice(1).split(' ');
+            const cmd = parts[0];
+            const args = parts.slice(1).join(' ');
+            const result = await handleSlashCommand(cmd, args);
+            if (result) {
+              console.log(result.output);
+              if (result.exit) break;
+            }
+            continue;
+          }
+          
+          // Send to agent
+          for await (const event of agent.run(trimmed)) {
+            if (event.type === 'text_delta') {
+              process.stdout.write((event as any).content || '');
+            } else if (event.type === 'error') {
+              console.error(`\nError: ${(event as any).error}`);
+            }
+          }
+          console.log(); // newline after response
+        }
+        
+        await saveSessionOnExit();
+        return;
+      }
+
       // Render TUI
       const { waitUntilExit } = render(
         React.createElement(App, {
