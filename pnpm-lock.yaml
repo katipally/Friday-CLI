@@ -104,6 +104,22 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.19.15)
 
+  packages/mcp:
+    dependencies:
+      '@anthropic-ai/friday-shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(postcss@8.5.8)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.1
+        version: 3.2.4(@types/node@22.19.15)
+
   packages/providers:
     dependencies:
       '@anthropic-ai/friday-shared':
