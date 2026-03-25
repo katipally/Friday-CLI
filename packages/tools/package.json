@@ -1,0 +1,28 @@
+{
+  "name": "@anthropic-ai/friday-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@anthropic-ai/friday-shared": "workspace:*",
+    "@anthropic-ai/friday-providers": "workspace:*",
+    "@anthropic-ai/friday-core": "workspace:*",
+    "fast-glob": "^3.3.3",
+    "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.1",
+    "@types/node": "^22.0.0"
+  }
+}
