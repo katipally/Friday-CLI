@@ -41,12 +41,24 @@ importers:
       '@anthropic-ai/friday-core':
         specifier: workspace:*
         version: link:../core
+      '@anthropic-ai/friday-i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@anthropic-ai/friday-indexer':
+        specifier: workspace:*
+        version: link:../indexer
+      '@anthropic-ai/friday-mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@anthropic-ai/friday-providers':
         specifier: workspace:*
         version: link:../providers
       '@anthropic-ai/friday-shared':
         specifier: workspace:*
         version: link:../shared
+      '@anthropic-ai/friday-tools':
+        specifier: workspace:*
+        version: link:../tools
       '@anthropic-ai/friday-tui':
         specifier: workspace:*
         version: link:../tui

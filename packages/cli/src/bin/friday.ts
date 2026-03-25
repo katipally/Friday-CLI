@@ -4,10 +4,13 @@ import { Command } from 'commander';
 import React from 'react';
 import { render } from 'ink';
 import { createProvider } from '@anthropic-ai/friday-providers';
-import { AgentLoop } from '@anthropic-ai/friday-core';
+import { AgentLoop, PermissionSystem } from '@anthropic-ai/friday-core';
 import { App } from '@anthropic-ai/friday-tui';
+import { createDefaultRegistry } from '@anthropic-ai/friday-tools';
+import { createCommandRegistry } from '../commands/index.js';
 import { loadConfig, loadProjectRules, ensureConfigDir } from '../config/loader.js';
 import type { AgentEvent, AgentMode } from '@anthropic-ai/friday-core';
+import type { CommandContext, CommandResult } from '../commands/types.js';
 
 const VERSION = '0.1.0';
 
@@ -48,30 +51,84 @@ program
         model: config.defaultModel,
       });
 
-      // Create agent
+      // Set up permission system
+      const workspacePath = process.cwd();
+      const permissionSystem = new PermissionSystem(workspacePath);
+
+      // Create tool registry with permission checking
+      const toolRegistry = createDefaultRegistry({
+        workspaceRoot: workspacePath,
+        cwd: workspacePath,
+        checkPermission: async (action: string, target: string) => {
+          const decision = await permissionSystem.check(action, { path: target });
+          return decision.allowed;
+        },
+      });
+
+      // Mutable state for mode/model switching via slash commands
+      let currentMode = (options.mode || 'code') as AgentMode;
+      let currentModel = config.defaultModel;
+      let currentProvider = config.defaultProvider;
+
+      // Create agent with tools
       const agent = new AgentLoop(provider, {
-        provider: config.defaultProvider,
-        model: config.defaultModel,
-        mode: (options.mode || 'code') as AgentMode,
+        provider: currentProvider,
+        model: currentModel,
+        mode: currentMode,
         maxIterations: config.maxIterations,
         projectRules: projectRules || undefined,
         temperature: config.temperature,
         maxTokens: config.maxTokens,
+      }, toolRegistry);
+
+      // Slash command registry
+      const commandRegistry = createCommandRegistry();
+
+      // Track cost
+      let totalCostAmount = 0;
+      let totalInputTok = 0;
+      let totalOutputTok = 0;
+
+      // Build command context (used by slash commands)
+      const buildCommandContext = (): CommandContext => ({
+        currentProvider,
+        currentModel,
+        currentMode,
+        sessionId: `session-${Date.now()}`,
+        workspacePath,
+        setProvider: (p: string) => { currentProvider = p; },
+        setModel: (m: string) => { currentModel = m; },
+        setMode: (m: string) => { currentMode = m as AgentMode; },
+        clearHistory: () => agent.reset(),
+        getHistory: () => agent.getHistory(),
+        getCostSummary: () => ({
+          totalCost: totalCostAmount,
+          inputTokens: totalInputTok,
+          outputTokens: totalOutputTok,
+        }),
       });
 
-      // Message handler
+      // Message handler — connects user input to agent loop
       const handleMessage = (message: string): AsyncGenerator<AgentEvent> => {
         return agent.run(message);
+      };
+
+      // Slash command handler — returns result to TUI
+      const handleSlashCommand = async (command: string, args: string): Promise<CommandResult | null> => {
+        const input = `/${command}${args ? ' ' + args : ''}`;
+        const context = buildCommandContext();
+        return commandRegistry.execute(input, context);
       };
 
       // Render TUI
       const { waitUntilExit } = render(
         React.createElement(App, {
           version: VERSION,
-          model: config.defaultModel,
-          provider: config.defaultProvider,
-          mode: (options.mode || 'code') as AgentMode,
+          model: currentModel,
+          provider: currentProvider,
+          mode: currentMode,
           onMessage: handleMessage,
+          onSlashCommand: handleSlashCommand,
         }),
       );
 

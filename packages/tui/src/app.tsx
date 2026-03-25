@@ -18,13 +18,19 @@ interface ChatMessage {
   isStreaming?: boolean;
 }
 
+interface CommandResult {
+  output: string;
+  type: 'info' | 'success' | 'error' | 'table';
+  exit?: boolean;
+}
+
 interface AppProps {
   version: string;
   model: string;
   provider: string;
   mode: AgentMode;
   onMessage: (message: string) => AsyncGenerator<AgentEvent>;
-  onSlashCommand?: (command: string, args: string) => void;
+  onSlashCommand?: (command: string, args: string) => Promise<CommandResult | null>;
 }
 
 export const App: React.FC<AppProps> = ({
@@ -73,7 +79,7 @@ export const App: React.FC<AppProps> = ({
       // Handle slash commands
       if (input.startsWith('/')) {
         const [command, ...argParts] = input.slice(1).split(' ');
-        if (command === 'exit' || command === 'quit') {
+        if (command === 'exit' || command === 'quit' || command === 'q') {
           exit();
           return;
         }
@@ -82,7 +88,26 @@ export const App: React.FC<AppProps> = ({
           return;
         }
         if (onSlashCommand) {
-          onSlashCommand(command, argParts.join(' '));
+          try {
+            const result = await onSlashCommand(command, argParts.join(' '));
+            if (result) {
+              if (result.exit) {
+                exit();
+                return;
+              }
+              addMessage({
+                id: `cmd-${Date.now()}`,
+                role: 'system',
+                content: result.output,
+              });
+            }
+          } catch (err) {
+            addMessage({
+              id: `cmd-err-${Date.now()}`,
+              role: 'system',
+              content: `Command error: ${(err as Error).message}`,
+            });
+          }
           return;
         }
       }
@@ -125,6 +150,22 @@ export const App: React.FC<AppProps> = ({
               );
               break;
 
+            case 'permission_request':
+              addMessage({
+                id: `perm-${event.toolCall.id}`,
+                role: 'system',
+                content: `🔒 Permission requested: ${event.toolCall.name}(${JSON.stringify(event.toolCall.arguments)})`,
+              });
+              break;
+
+            case 'permission_denied':
+              addMessage({
+                id: `perm-denied-${Date.now()}`,
+                role: 'system',
+                content: `🚫 Permission denied: ${event.toolCall.name} — ${event.reason}`,
+              });
+              break;
+
             case 'cost_update':
               setTotalCost(event.entry.totalSessionCost);
               break;
@@ -140,6 +181,10 @@ export const App: React.FC<AppProps> = ({
                 role: 'system',
                 content: `Error: ${event.error.message}`,
               });
+              break;
+
+            case 'iteration':
+              // Optional: show iteration count for long-running agents
               break;
           }
         }
