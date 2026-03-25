@@ -1,0 +1,33 @@
+{
+  "name": "@anthropic-ai/friday-tui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --external react",
+    "dev": "tsup src/index.ts --format esm --dts --watch --external react",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@anthropic-ai/friday-shared": "workspace:*",
+    "@anthropic-ai/friday-core": "workspace:*",
+    "ink": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "react": "^18.3.0",
+    "chalk": "^5.3.0",
+    "figures": "^6.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0"
+  }
+}

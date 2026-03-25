@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.vitest/
+
+# Turbo
+.turbo/
+
+# Friday CLI config (user-specific)
+.friday/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Binary builds
+sea/
+*.blob
