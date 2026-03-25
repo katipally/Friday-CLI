@@ -96,6 +96,27 @@ function loadEnvConfig(): Partial<FridayConfig> {
   if (process.env.OLLAMA_HOST) {
     providers.ollama = { baseUrl: process.env.OLLAMA_HOST };
   }
+  if (process.env.MISTRAL_API_KEY) {
+    providers.mistral = { apiKey: process.env.MISTRAL_API_KEY };
+  }
+  if (process.env.GROQ_API_KEY) {
+    providers.groq = { apiKey: process.env.GROQ_API_KEY };
+  }
+  if (process.env.DEEPSEEK_API_KEY) {
+    providers.deepseek = { apiKey: process.env.DEEPSEEK_API_KEY };
+  }
+  if (process.env.TOGETHER_API_KEY) {
+    providers.together = { apiKey: process.env.TOGETHER_API_KEY };
+  }
+  if (process.env.COHERE_API_KEY) {
+    providers.cohere = { apiKey: process.env.COHERE_API_KEY };
+  }
+  if (process.env.AZURE_OPENAI_API_KEY) {
+    providers.azure = {
+      apiKey: process.env.AZURE_OPENAI_API_KEY,
+      ...(process.env.AZURE_OPENAI_ENDPOINT && { baseUrl: process.env.AZURE_OPENAI_ENDPOINT }),
+    };
+  }
 
   if (Object.keys(providers).length > 0) {
     config.providers = providers;

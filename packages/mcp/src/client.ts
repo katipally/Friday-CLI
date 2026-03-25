@@ -1,12 +1,21 @@
 import { createLogger } from '@anthropic-ai/friday-shared';
 import { StdioTransport } from './transport/stdio.js';
+import { HttpSseTransport } from './transport/http-sse.js';
 import type { MCPServerConfig, MCPServerInfo, MCPTool, MCPToolResult } from './types.js';
 
 const logger = createLogger('mcp:client');
 
+/** Common transport interface shared by STDIO and HTTP/SSE transports. */
+interface MCPTransport {
+  start(): Promise<void>;
+  send(method: string, params?: Record<string, unknown>): Promise<unknown>;
+  stop(): Promise<void>;
+  isRunning(): boolean;
+}
+
 interface ConnectedServer {
   config: MCPServerConfig;
-  transport: StdioTransport;
+  transport: MCPTransport;
   tools: MCPTool[];
   info: MCPServerInfo;
 }
@@ -27,15 +36,20 @@ export class MCPClient {
       throw new Error(`Server "${config.name}" is already connected`);
     }
 
+    let transport: MCPTransport;
+
     if (config.transport === 'http-sse') {
-      throw new Error('HTTP/SSE transport is not yet implemented');
+      if (!config.url) {
+        throw new Error('HTTP/SSE transport requires a "url" field');
+      }
+      transport = new HttpSseTransport(config.url);
+    } else {
+      if (!config.command) {
+        throw new Error('stdio transport requires a "command" field');
+      }
+      transport = new StdioTransport(config.command, config.args ?? [], config.env);
     }
 
-    if (!config.command) {
-      throw new Error('stdio transport requires a "command" field');
-    }
-
-    const transport = new StdioTransport(config.command, config.args ?? [], config.env);
     await transport.start();
 
     try {

@@ -13,7 +13,9 @@
     "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx}\"",
     "clean": "turbo clean && rm -rf node_modules",
     "typecheck": "turbo typecheck",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:binary": "node scripts/build-binary.mjs",
+    "publish:all": "pnpm run build && pnpm -r publish --no-git-checks"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",

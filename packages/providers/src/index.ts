@@ -10,3 +10,7 @@ import './adapters/mistral.js';
 import './adapters/groq.js';
 import './adapters/deepseek.js';
 import './adapters/openai-compatible.js';
+import './adapters/aws-bedrock.js';
+import './adapters/azure-openai.js';
+import './adapters/cohere.js';
+import './adapters/together.js';

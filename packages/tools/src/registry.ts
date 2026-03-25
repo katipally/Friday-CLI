@@ -6,6 +6,20 @@ import type { Tool, ToolContext } from './types.js';
 
 const logger = createLogger('tools:registry');
 
+/** Callback to invoke an MCP tool on a remote server. */
+export type MCPToolCallFn = (
+  serverName: string,
+  toolName: string,
+  args: Record<string, unknown>,
+) => Promise<unknown>;
+
+/** Minimal shape of an MCP tool descriptor (avoids hard dependency on mcp pkg). */
+export interface MCPToolDescriptor {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
 export class ToolRegistry implements AgentToolRegistry {
   private tools = new Map<string, Tool>();
 
@@ -17,6 +31,46 @@ export class ToolRegistry implements AgentToolRegistry {
     }
     this.tools.set(tool.name, tool);
     logger.debug(`Registered tool: ${tool.name}`);
+  }
+
+  /**
+   * Register tools from an MCP server.
+   * Tool names are namespaced as `serverName__toolName` to avoid conflicts.
+   */
+  registerMCPTools(
+    serverName: string,
+    tools: MCPToolDescriptor[],
+    callFn: MCPToolCallFn,
+  ): void {
+    for (const mcpTool of tools) {
+      const namespacedName = `${serverName}__${mcpTool.name}`;
+
+      const tool: Tool = {
+        name: namespacedName,
+        description: `[${serverName}] ${mcpTool.description}`,
+        parameters: mcpTool.inputSchema,
+        execute: async (args: Record<string, unknown>): Promise<ToolResult> => {
+          try {
+            const result = await callFn(serverName, mcpTool.name, args);
+            const resultObj = result as { content?: Array<{ text?: string }>; isError?: boolean };
+            const outputText = resultObj?.content
+              ?.map((c) => c.text ?? '')
+              .join('\n') ?? JSON.stringify(result);
+
+            return {
+              success: !resultObj?.isError,
+              output: outputText,
+            };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return { success: false, output: message };
+          }
+        },
+      };
+
+      this.register(tool);
+      logger.debug(`Registered MCP tool: ${namespacedName} from server "${serverName}"`);
+    }
   }
 
   getToolDefinitions(): ToolDefinition[] {

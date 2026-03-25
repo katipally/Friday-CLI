@@ -96,4 +96,54 @@ describe('provider registry', () => {
       expect(() => createProvider(config)).toThrow('nonexistent-provider');
     });
   });
+
+  describe('new provider adapters registration', () => {
+    it('registers aws-bedrock provider', () => {
+      const factory = vi.fn(() => makeMockProvider('aws-bedrock'));
+      registerProvider('aws-bedrock', factory);
+      expect(hasProvider('aws-bedrock')).toBe(true);
+      const config: ProviderConfig = { provider: 'aws-bedrock' };
+      const provider = createProvider(config);
+      expect(provider.name).toBe('aws-bedrock');
+      expect(factory).toHaveBeenCalledWith(config);
+    });
+
+    it('registers azure-openai provider', () => {
+      const factory = vi.fn(() => makeMockProvider('azure-openai'));
+      registerProvider('azure-openai', factory);
+      expect(hasProvider('azure-openai')).toBe(true);
+      const config: ProviderConfig = { provider: 'azure-openai' };
+      const provider = createProvider(config);
+      expect(provider.name).toBe('azure-openai');
+      expect(factory).toHaveBeenCalledWith(config);
+    });
+
+    it('registers cohere provider', () => {
+      const factory = vi.fn(() => makeMockProvider('cohere'));
+      registerProvider('cohere', factory);
+      expect(hasProvider('cohere')).toBe(true);
+      const config: ProviderConfig = { provider: 'cohere' };
+      const provider = createProvider(config);
+      expect(provider.name).toBe('cohere');
+      expect(factory).toHaveBeenCalledWith(config);
+    });
+
+    it('registers together provider', () => {
+      const factory = vi.fn(() => makeMockProvider('together'));
+      registerProvider('together', factory);
+      expect(hasProvider('together')).toBe(true);
+      const config: ProviderConfig = { provider: 'together' };
+      const provider = createProvider(config);
+      expect(provider.name).toBe('together');
+      expect(factory).toHaveBeenCalledWith(config);
+    });
+
+    it('lists all new providers', () => {
+      const list = listProviders();
+      expect(list).toContain('aws-bedrock');
+      expect(list).toContain('azure-openai');
+      expect(list).toContain('cohere');
+      expect(list).toContain('together');
+    });
+  });
 });

@@ -8,6 +8,32 @@ export interface SlashCommand {
   execute(args: string[], context: CommandContext): Promise<CommandResult>;
 }
 
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface ToolRegistryLike {
+  getToolDefinitions(): ToolDefinition[];
+}
+
+export interface MCPTool {
+  name: string;
+  description?: string;
+}
+
+export interface MCPClientLike {
+  listServers(): string[];
+  isConnected(serverName: string): boolean;
+  listTools(): Array<{ server: string; tool: MCPTool }>;
+  disconnectAll(): Promise<void>;
+}
+
+export interface MCPManagerLike {
+  getClient(): MCPClientLike;
+}
+
 export interface CommandContext {
   currentProvider: string;
   currentModel: string;
@@ -21,6 +47,9 @@ export interface CommandContext {
   clearHistory: () => void;
   getHistory: () => Message[];
   getCostSummary: () => { totalCost: number; inputTokens: number; outputTokens: number };
+
+  toolRegistry?: ToolRegistryLike;
+  mcpManager?: MCPManagerLike;
 }
 
 export interface CommandResult {

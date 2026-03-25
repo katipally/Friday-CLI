@@ -8,13 +8,25 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts src/bin/friday.ts --format esm --dts --clean",
     "dev": "tsx src/bin/friday.ts",
     "test": "vitest run",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@anthropic-ai/friday-shared": "workspace:*",
@@ -47,7 +59,10 @@
     "anthropic",
     "gemini",
     "ollama",
-    "terminal"
+    "terminal",
+    "friday",
+    "copilot",
+    "code-assistant"
   ],
   "license": "MIT",
   "repository": {

@@ -23,7 +23,7 @@ export const mcpServerSchema = z.object({
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   url: z.string().optional(),
-  transport: z.enum(['stdio', 'http']).default('stdio'),
+  transport: z.enum(['stdio', 'http-sse']).default('stdio'),
 });
 
 export const fridayConfigSchema = z.object({

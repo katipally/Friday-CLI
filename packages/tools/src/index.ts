@@ -1,5 +1,6 @@
 export type { Tool, ToolContext, ToolResult, ToolDefinition } from './types.js';
 export { ToolRegistry } from './registry.js';
+export type { MCPToolCallFn, MCPToolDescriptor } from './registry.js';
 export {
   fileReadTool,
   fileWriteTool,

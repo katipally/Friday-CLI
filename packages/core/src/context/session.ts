@@ -3,6 +3,7 @@ import { createLogger, getDataDir } from '@anthropic-ai/friday-shared';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
+import { MessageHistory } from './message-history.js';
 
 const logger = createLogger('session');
 
@@ -31,6 +32,7 @@ export interface SessionSummary {
 
 export class SessionManager {
   private sessionsDir: string;
+  private currentSession: Session | null = null;
 
   constructor() {
     this.sessionsDir = path.join(getDataDir(), 'sessions');
@@ -45,13 +47,46 @@ export class SessionManager {
     return `${date}_${time}_${suffix}`;
   }
 
+  /** Create a new session and set it as current. */
+  create(opts: {
+    projectPath: string;
+    mode: string;
+    provider: string;
+    model: string;
+  }): Session {
+    const now = new Date().toISOString();
+    const session: Session = {
+      id: this.generateId(),
+      projectPath: opts.projectPath,
+      messages: [],
+      mode: opts.mode,
+      provider: opts.provider,
+      model: opts.model,
+      startedAt: now,
+      lastActiveAt: now,
+      totalCost: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+    };
+    this.currentSession = session;
+    return session;
+  }
+
   /** Save a session to disk as JSON */
-  async save(session: Session): Promise<void> {
+  async save(session?: Session): Promise<void> {
+    const target = session ?? this.currentSession;
+    if (!target) {
+      logger.warn('No session to save');
+      return;
+    }
+
+    target.lastActiveAt = new Date().toISOString();
+
     await fs.mkdir(this.sessionsDir, { recursive: true });
-    const filePath = path.join(this.sessionsDir, `${session.id}.json`);
-    const data = JSON.stringify(session, null, 2);
+    const filePath = path.join(this.sessionsDir, `${target.id}.json`);
+    const data = JSON.stringify(target, null, 2);
     await fs.writeFile(filePath, data, 'utf-8');
-    logger.debug(`Session saved: ${session.id}`);
+    logger.debug(`Session saved: ${target.id}`);
   }
 
   /** Load a session by ID, returns null if not found */
@@ -67,6 +102,40 @@ export class SessionManager {
       logger.error(`Failed to load session ${id}: ${error}`);
       return null;
     }
+  }
+
+  /** Load a session and return its MessageHistory, setting it as the current session. */
+  async resume(sessionId: string): Promise<{ session: Session; history: MessageHistory } | null> {
+    const session = await this.load(sessionId);
+    if (!session) {
+      logger.warn(`Session "${sessionId}" not found`);
+      return null;
+    }
+
+    this.currentSession = session;
+
+    const history = new MessageHistory();
+    for (const msg of session.messages) {
+      history.add(msg);
+    }
+
+    logger.info(`Resumed session "${sessionId}" with ${session.messages.length} messages`);
+    return { session, history };
+  }
+
+  /** Return the current in-memory session. */
+  getCurrent(): Session | null {
+    return this.currentSession;
+  }
+
+  /** Set the current session (used when creating or resuming). */
+  setCurrent(session: Session): void {
+    this.currentSession = session;
+  }
+
+  /** List recent sessions sorted by lastActiveAt descending */
+  async list(limit: number = 20): Promise<SessionSummary[]> {
+    return this.listRecent(limit);
   }
 
   /** List recent sessions sorted by lastActiveAt descending */
@@ -127,6 +196,10 @@ export class SessionManager {
     try {
       await fs.unlink(filePath);
       logger.debug(`Session deleted: ${id}`);
+
+      if (this.currentSession?.id === id) {
+        this.currentSession = null;
+      }
     } catch (error: unknown) {
       if (isNodeError(error) && error.code === 'ENOENT') {
         return;
