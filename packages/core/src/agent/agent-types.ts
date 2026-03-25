@@ -22,7 +22,7 @@ export type AgentEvent =
   | { type: 'text_delta'; content: string }
   | { type: 'tool_start'; toolCall: ToolCall }
   | { type: 'tool_result'; toolCall: ToolCall; result: ToolResult }
-  | { type: 'permission_request'; toolCall: ToolCall }
+  | { type: 'permission_request'; toolCall: ToolCall; reason: string; respond: (choice: 'allow_once' | 'allow_always' | 'deny') => void }
   | { type: 'permission_granted'; toolCall: ToolCall }
   | { type: 'permission_denied'; toolCall: ToolCall; reason: string }
   | { type: 'response'; content: string }

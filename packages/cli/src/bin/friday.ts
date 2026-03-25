@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { Command } from 'commander';
 import React from 'react';
 import { render } from 'ink';
 import { createProvider } from '@anthropic-ai/friday-providers';
-import { AgentLoop, PermissionSystem, SessionManager } from '@anthropic-ai/friday-core';
+import { AgentLoop, PermissionSystem, SessionManager, CostTracker } from '@anthropic-ai/friday-core';
 import { App } from '@anthropic-ai/friday-tui';
 import { createDefaultRegistry } from '@anthropic-ai/friday-tools';
 import { MCPServerManager } from '@anthropic-ai/friday-mcp';
@@ -15,6 +17,19 @@ import { getCurrentVersion } from '../config/version.js';
 import type { AgentEvent, AgentMode } from '@anthropic-ai/friday-core';
 import type { CommandContext, CommandResult } from '../commands/types.js';
 import type { Session } from '@anthropic-ai/friday-core';
+
+function detectProjectType(cwd: string): string | undefined {
+  if (existsSync(join(cwd, 'package.json'))) return 'Node.js';
+  if (existsSync(join(cwd, 'Cargo.toml'))) return 'Rust';
+  if (existsSync(join(cwd, 'go.mod'))) return 'Go';
+  if (existsSync(join(cwd, 'pyproject.toml'))) return 'Python';
+  if (existsSync(join(cwd, 'requirements.txt'))) return 'Python';
+  if (existsSync(join(cwd, 'pom.xml'))) return 'Java';
+  if (existsSync(join(cwd, 'build.gradle'))) return 'Java';
+  if (existsSync(join(cwd, 'Gemfile'))) return 'Ruby';
+  if (existsSync(join(cwd, 'mix.exs'))) return 'Elixir';
+  return undefined;
+}
 
 const VERSION = getCurrentVersion();
 
@@ -137,7 +152,13 @@ program
         });
       }
 
-      // Create agent with tools
+      // Create cost tracker
+      const costTracker = new CostTracker(null);
+
+      // Detect project type
+      const projectType = detectProjectType(workspacePath);
+
+      // Create agent with tools, permissions, and cost tracking
       const agent = new AgentLoop(provider, {
         provider: currentProvider,
         model: currentModel,
@@ -146,7 +167,10 @@ program
         projectRules: projectRules || undefined,
         temperature: config.temperature,
         maxTokens: config.maxTokens,
-      }, toolRegistry);
+      }, toolRegistry, {
+        permissionSystem,
+        costTracker,
+      });
 
       // Slash command registry
       const commandRegistry = createCommandRegistry();
@@ -218,6 +242,7 @@ program
           model: currentModel,
           provider: currentProvider,
           mode: currentMode,
+          projectType,
           onMessage: handleMessage,
           onSlashCommand: handleSlashCommand,
         }),

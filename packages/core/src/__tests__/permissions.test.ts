@@ -35,11 +35,11 @@ describe('PermissionSystem', () => {
     expect(decision.reason).toContain('outside workspace');
   });
 
-  it('prompts for file_write (denied without callback)', async () => {
+  it('allows file_write in workspace without callback (default workspace-allow)', async () => {
     const decision = await ps.check('file_write', { path: 'src/new.ts' });
-    // No prompt callback set, so prompt rules default to deny
-    expect(decision.allowed).toBe(false);
-    expect(decision.reason).toContain('denied by default');
+    // Without a callback, workspace-scoped operations are allowed by default
+    expect(decision.allowed).toBe(true);
+    expect(decision.reason).toContain('workspace scope');
   });
 
   it('denies dangerous shell commands (rm -rf /)', async () => {
@@ -104,10 +104,10 @@ describe('PermissionSystem', () => {
   // -----------------------------------------------------------------------
   // Prompt without callback
   // -----------------------------------------------------------------------
-  it('without prompt callback, prompt rules default to deny', async () => {
+  it('without prompt callback, workspace-scoped prompt rules default to allow', async () => {
     const decision = await ps.check('file_edit', { path: 'src/x.ts' });
-    expect(decision.allowed).toBe(false);
-    expect(decision.reason).toContain('denied by default');
+    expect(decision.allowed).toBe(true);
+    expect(decision.reason).toContain('workspace scope');
   });
 
   // -----------------------------------------------------------------------

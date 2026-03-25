@@ -7,6 +7,7 @@ import { InputBox } from './components/InputBox.js';
 import { StatusBar } from './components/StatusBar.js';
 import { Spinner } from './components/Spinner.js';
 import { ToolOutput } from './components/ToolOutput.js';
+import { PermissionPrompt } from './components/PermissionPrompt.js';
 
 interface ChatMessage {
   id: string;
@@ -24,11 +25,18 @@ interface CommandResult {
   exit?: boolean;
 }
 
+interface PendingPermission {
+  toolCall: { id: string; name: string; arguments: Record<string, unknown> };
+  reason: string;
+  respond: (choice: 'allow_once' | 'allow_always' | 'deny') => void;
+}
+
 interface AppProps {
   version: string;
   model: string;
   provider: string;
   mode: AgentMode;
+  projectType?: string;
   onMessage: (message: string) => AsyncGenerator<AgentEvent>;
   onSlashCommand?: (command: string, args: string) => Promise<CommandResult | null>;
 }
@@ -38,6 +46,7 @@ export const App: React.FC<AppProps> = ({
   model,
   provider,
   mode,
+  projectType,
   onMessage,
   onSlashCommand,
 }) => {
@@ -48,6 +57,7 @@ export const App: React.FC<AppProps> = ({
   const [totalInputTokens, setTotalInputTokens] = useState(0);
   const [totalOutputTokens, setTotalOutputTokens] = useState(0);
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null);
+  const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null);
 
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
@@ -151,11 +161,18 @@ export const App: React.FC<AppProps> = ({
               break;
 
             case 'permission_request':
-              addMessage({
-                id: `perm-${event.toolCall.id}`,
-                role: 'system',
-                content: `🔒 Permission requested: ${event.toolCall.name}(${JSON.stringify(event.toolCall.arguments)})`,
+              setPendingPermission({
+                toolCall: event.toolCall,
+                reason: event.reason,
+                respond: (choice) => {
+                  event.respond(choice);
+                  setPendingPermission(null);
+                },
               });
+              break;
+
+            case 'permission_granted':
+              // Tool execution will follow via tool_start — no extra message needed
               break;
 
             case 'permission_denied':
@@ -205,7 +222,13 @@ export const App: React.FC<AppProps> = ({
 
   return (
     <Box flexDirection="column" width="100%">
-      <WelcomeBanner version={version} model={model} provider={provider} />
+      <WelcomeBanner
+        version={version}
+        model={model}
+        provider={provider}
+        mode={mode}
+        projectType={projectType}
+      />
 
       {/* Messages */}
       <Box flexDirection="column" flexGrow={1} paddingX={1}>
@@ -230,6 +253,18 @@ export const App: React.FC<AppProps> = ({
         )}
         {isProcessing && !currentStreamId && <Spinner label="Thinking..." />}
       </Box>
+
+      {/* Permission Prompt (rendered inline when a permission is pending) */}
+      {pendingPermission && (
+        <PermissionPrompt
+          toolName={pendingPermission.toolCall.name}
+          args={pendingPermission.toolCall.arguments}
+          reason={pendingPermission.reason}
+          onRespond={(choice) => {
+            pendingPermission.respond(choice);
+          }}
+        />
+      )}
 
       {/* Input */}
       <InputBox

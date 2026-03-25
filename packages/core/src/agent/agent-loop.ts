@@ -3,8 +3,15 @@ import type { Message, ToolResult } from '@anthropic-ai/friday-shared';
 import type { LLMProvider, GenerateResponse, StreamChunk } from '@anthropic-ai/friday-providers';
 import type { AgentState, AgentConfig, AgentEvent, AgentToolRegistry } from './agent-types.js';
 import { getModeSystemPrompt } from './modes/index.js';
+import { PermissionSystem } from '../permissions/index.js';
+import { CostTracker } from '../cost/tracker.js';
 
 const logger = createLogger('agent-loop');
+
+export interface AgentLoopOptions {
+  permissionSystem?: PermissionSystem;
+  costTracker?: CostTracker;
+}
 
 export class AgentLoop {
   private state: AgentState = 'IDLE';
@@ -13,15 +20,20 @@ export class AgentLoop {
   private config: AgentConfig;
   private provider: LLMProvider;
   private toolRegistry: AgentToolRegistry | null;
+  private permissionSystem: PermissionSystem | null;
+  private costTracker: CostTracker | null;
 
   constructor(
     provider: LLMProvider,
     config: AgentConfig,
     toolRegistry: AgentToolRegistry | null = null,
+    options?: AgentLoopOptions,
   ) {
     this.provider = provider;
     this.config = config;
     this.toolRegistry = toolRegistry;
+    this.permissionSystem = options?.permissionSystem ?? null;
+    this.costTracker = options?.costTracker ?? null;
   }
 
   getState(): AgentState {
@@ -136,6 +148,15 @@ export class AgentLoop {
             }
           }
 
+          if (this.costTracker) {
+            try {
+              const entry = this.costTracker.track(this.config.model, this.config.provider, usage);
+              yield { type: 'cost_update', entry };
+            } catch (error) {
+              yield { type: 'error', error: error as Error };
+            }
+          }
+
           yield { type: 'done', usage };
 
           // Add assistant message to history
@@ -150,6 +171,66 @@ export class AgentLoop {
             yield this.setState('ACTING');
 
             for (const toolCall of pendingToolCalls) {
+              // Permission check before execution
+              if (this.permissionSystem) {
+                const preCheck = this.permissionSystem.checkRulesOnly(
+                  toolCall.name,
+                  toolCall.arguments,
+                );
+
+                if (preCheck.action === 'deny') {
+                  const reason = preCheck.reason;
+                  yield { type: 'permission_denied', toolCall, reason };
+                  this.history.push({
+                    role: 'tool',
+                    content: `Permission denied: ${reason}`,
+                    toolCallId: toolCall.id,
+                  });
+                  continue;
+                }
+
+                if (preCheck.action === 'prompt') {
+                  let resolvePermission!: (
+                    choice: 'allow_once' | 'allow_always' | 'deny',
+                  ) => void;
+                  const permissionPromise = new Promise<
+                    'allow_once' | 'allow_always' | 'deny'
+                  >((resolve) => {
+                    resolvePermission = resolve;
+                  });
+
+                  yield {
+                    type: 'permission_request',
+                    toolCall,
+                    reason: preCheck.reason,
+                    respond: resolvePermission,
+                  };
+
+                  const choice = await permissionPromise;
+                  this.permissionSystem.recordChoice(
+                    toolCall.name,
+                    toolCall.arguments,
+                    choice,
+                  );
+
+                  if (choice === 'deny') {
+                    yield {
+                      type: 'permission_denied',
+                      toolCall,
+                      reason: 'Denied by user',
+                    };
+                    this.history.push({
+                      role: 'tool',
+                      content: 'Permission denied by user',
+                      toolCallId: toolCall.id,
+                    });
+                    continue;
+                  }
+
+                  yield { type: 'permission_granted', toolCall };
+                }
+              }
+
               yield { type: 'tool_start', toolCall };
 
               if (!this.toolRegistry?.hasTool(toolCall.name)) {
@@ -210,6 +291,16 @@ export class AgentLoop {
           }
 
           this.history.push({ role: 'assistant', content: responseText });
+
+          if (this.costTracker) {
+            try {
+              const entry = this.costTracker.track(this.config.model, this.config.provider, usage);
+              yield { type: 'cost_update', entry };
+            } catch (error) {
+              yield { type: 'error', error: error as Error };
+            }
+          }
+
           yield { type: 'done', usage };
           yield { type: 'response', content: responseText };
           yield this.setState('TERMINATED');

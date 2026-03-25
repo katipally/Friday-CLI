@@ -2,6 +2,7 @@ import path from 'node:path';
 import { createLogger } from '@anthropic-ai/friday-shared';
 import { DEFAULT_RULES } from './default-rules.js';
 import type {
+  PermissionAction,
   PermissionRule,
   PermissionDecision,
   PermissionPromptCallback,
@@ -82,6 +83,48 @@ export class PermissionSystem {
     this.rules.unshift(rule);
   }
 
+  /**
+   * Check rules only — returns what action should be taken without prompting.
+   * Used by the agent loop to decide whether to yield a permission_request event.
+   */
+  checkRulesOnly(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): { action: PermissionAction; reason: string; rule?: PermissionRule } {
+    const argKey = this.buildArgKey(toolName, args);
+
+    if (this.alwaysAllowed.has(argKey)) {
+      return { action: 'allow', reason: 'Previously allowed by user (always)' };
+    }
+
+    const rule = this.findMatchingRule(toolName, args);
+
+    if (!rule) {
+      return { action: 'prompt', reason: 'No permission rule matched' };
+    }
+
+    return {
+      action: rule.action,
+      reason: rule.reason ?? `Rule matched for "${toolName}"`,
+      rule,
+    };
+  }
+
+  /**
+   * Record a user's permission choice. For 'allow_always', adds a blanket
+   * allow rule for the tool so future invocations are auto-allowed.
+   */
+  recordChoice(
+    toolName: string,
+    _args: Record<string, unknown>,
+    choice: 'allow_once' | 'allow_always' | 'deny',
+  ): void {
+    if (choice === 'allow_always') {
+      this.addRule({ tool: toolName, action: 'allow' });
+      logger.debug(`Added always-allow rule for tool "${toolName}"`);
+    }
+  }
+
   /** Reset session-specific always-allow decisions */
   resetSessionPermissions(): void {
     this.alwaysAllowed.clear();
@@ -99,11 +142,21 @@ export class PermissionSystem {
     rule?: PermissionRule,
   ): Promise<PermissionDecision> {
     if (!this.promptCallback) {
-      logger.debug('No prompt callback set, denying by default');
+      // When no prompt callback, allow workspace-scoped and deny global
+      const scope = this.inferScope(toolName, args);
+      if (scope === 'workspace') {
+        logger.debug('No prompt callback — allowing workspace-scoped operation by default');
+        return {
+          allowed: true,
+          rule,
+          reason: 'Allowed by default (workspace scope, no prompt callback)',
+        };
+      }
+      logger.debug('No prompt callback — denying global-scoped operation by default');
       return {
         allowed: false,
         rule,
-        reason: 'No prompt callback configured — denied by default',
+        reason: 'No prompt callback configured — denied by default for global scope',
       };
     }
 
