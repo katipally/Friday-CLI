@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import type { Settings, Message, AgentInstance, ToolContext } from '@fridaycode/shared';
-import { APP_NAME } from '@fridaycode/shared';
+import type { Settings, Message, AgentInstance, ToolContext, ModelProvider, Model } from '@fridaycode/shared';
 import type { CliOptions } from './index.js';
 
 // Components
 import { Output } from './components/Output.js';
 import { Prompt } from './components/Prompt.js';
-import { StatusBar } from './components/StatusBar.js';
+import { StatusLine } from './components/StatusBar.js';
 import { WelcomeScreen } from './mascot/welcome.js';
 import { PermissionPrompt } from './components/PermissionPrompt.js';
 import { TaskList } from './components/TaskList.js';
 import { ContextViewer } from './components/ContextViewer.js';
+import { ModelSwitcher } from './components/ModelSwitcher.js';
 
 // Systems
 import { executeCommand } from './commands/index.js';
 import { isOnboarded, markOnboarded, detectOllama } from './onboarding/wizard.js';
 import { setTheme } from './themes/engine.js';
-// Initialize themes on import
+// Initialize themes
 import './themes/dark.js';
 import './themes/light.js';
 
@@ -27,7 +27,15 @@ interface AppProps {
   options: CliOptions;
 }
 
-type AppState = 'welcome' | 'idle' | 'loading' | 'streaming' | 'tool-running' | 'permission';
+type AppState =
+  | 'welcome'
+  | 'idle'
+  | 'loading'
+  | 'streaming'
+  | 'tool-running'
+  | 'permission'
+  | 'model-select'
+  | 'error';
 
 interface PendingPermission {
   toolName: string;
@@ -35,109 +43,172 @@ interface PendingPermission {
   resolve: (allowed: boolean, always?: boolean) => void;
 }
 
-interface EngineHandle {
-  sendMessage: (content: string) => Promise<void>;
-  abort: () => void;
-  compact: () => Promise<void>;
+interface ToolStatus {
+  name: string;
+  status: 'running' | 'done' | 'error';
 }
 
 export function App({ settings, initialPrompt, options }: AppProps) {
   const { exit } = useApp();
-  const [state, setState] = useState<AppState>(initialPrompt ? 'loading' : 'welcome');
+  const [state, setState] = useState<AppState>('welcome');
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamContent, setStreamContent] = useState('');
   const [tokenCount, setTokenCount] = useState({ input: 0, output: 0 });
   const [showWelcome, setShowWelcome] = useState(!initialPrompt);
   const [currentModel, setCurrentModel] = useState(settings.activeModel);
   const [currentProvider, setCurrentProvider] = useState(settings.activeProvider);
-  const [backgroundTasks, setBackgroundTasks] = useState<AgentInstance[]>([]);
+  const [backgroundTasks] = useState<AgentInstance[]>([]);
   const [showContext, setShowContext] = useState(false);
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null);
+  const [toolStatus, setToolStatus] = useState<ToolStatus | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [engineReady, setEngineReady] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Model[]>([]);
 
-  const engineRef = useRef<EngineHandle | null>(null);
+  // Refs for mutable state in closures
+  const providerRef = useRef<ModelProvider | null>(null);
+  const allMessagesRef = useRef<Message[]>([]);
+  const abortRef = useRef<AbortController>(new AbortController());
+  const coreRef = useRef<{
+    toolRegistry: import('@fridaycode/shared').Tool extends unknown ? any : never;
+    permissions: any;
+    hooks: any;
+    session: any;
+    prepareCompactionPrompt: any;
+    applyCompaction: any;
+  } | null>(null);
 
-  // Set initial theme
+  // ─── Initialization ────────────────────────────────────────
   useEffect(() => {
     setTheme(settings.theme);
-  }, []);
 
-  // First-run onboarding check
-  useEffect(() => {
     if (!isOnboarded() && !initialPrompt) {
       detectOllama().then((found) => {
-        if (found && !settings.activeProvider) {
+        if (found && !currentProvider) {
           setCurrentProvider('ollama');
         }
       });
       markOnboarded().catch(() => {});
     }
-  }, []);
 
-  useEffect(() => {
-    initEngine().then(() => {
-      if (initialPrompt) {
-        handleSubmit(initialPrompt);
-      }
-    });
+    initEngine();
   }, []);
 
   async function initEngine() {
-    const {
-      createProvider,
-      createDefaultToolRegistry,
-      PermissionEngine,
-      HookEngineImpl,
-      createSession,
-      prepareCompactionPrompt,
-      applyCompaction,
-    } = await import('@fridaycode/core');
+    try {
+      const core = await import('@fridaycode/core');
 
-    const providerConfig = settings.providers[currentProvider] ?? settings.providers[settings.activeProvider];
-    if (!providerConfig) return;
+      // Find the provider config - try current, then activeProvider, then first available
+      let providerConfig = settings.providers[currentProvider];
+      if (!providerConfig) {
+        providerConfig = settings.providers[settings.activeProvider];
+      }
+      if (!providerConfig) {
+        // Find first enabled provider
+        for (const [, cfg] of Object.entries(settings.providers)) {
+          if (cfg && cfg.enabled !== false) {
+            providerConfig = cfg;
+            break;
+          }
+        }
+      }
+      if (!providerConfig) {
+        // Fallback: create a default ollama config
+        providerConfig = {
+          type: 'ollama' as const,
+          enabled: true,
+          baseUrl: 'http://localhost:11434',
+        };
+      }
 
-    const provider = createProvider(providerConfig);
-    const toolRegistry = createDefaultToolRegistry();
-    const permissionRules = [
-      ...settings.permissions.allow.map((t: string) => ({ action: 'allow' as const, tool: t })),
-      ...settings.permissions.deny.map((t: string) => ({ action: 'deny' as const, tool: t })),
-    ];
-    const permissions = new PermissionEngine(settings.permissionMode, permissionRules);
-    const hooks = new HookEngineImpl();
-    const session = createSession(process.cwd(), 'interactive');
+      const provider = core.createProvider(providerConfig);
+      providerRef.current = provider;
 
-    let abortController = new AbortController();
-    let allMessages: Message[] = [];
+      const toolRegistry = core.createDefaultToolRegistry();
+      const permissionRules = [
+        ...settings.permissions.allow.map((t: string) => ({ action: 'allow' as const, tool: t })),
+        ...settings.permissions.deny.map((t: string) => ({ action: 'deny' as const, tool: t })),
+      ];
+      const permissions = new core.PermissionEngine(settings.permissionMode, permissionRules);
+      const hooks = new core.HookEngineImpl();
+      const session = core.createSession(process.cwd(), 'interactive');
 
-    engineRef.current = {
-      sendMessage: async (content: string) => {
-        abortController = new AbortController();
-        const userMsg: Message = { role: 'user', content, timestamp: Date.now() };
-        allMessages = [...allMessages, userMsg];
-        setMessages((prev) => [...prev, userMsg]);
-        setState('streaming');
-        setStreamContent('');
+      coreRef.current = {
+        toolRegistry,
+        permissions,
+        hooks,
+        session,
+        prepareCompactionPrompt: core.prepareCompactionPrompt,
+        applyCompaction: core.applyCompaction,
+      };
 
-        let loopMessages = [...allMessages];
-        let continueLoop = true;
-        let turns = 0;
-        const maxTurns = options.maxTurns ?? settings.compactMessageThreshold ?? 50;
+      // Auto-detect model if none set
+      if (!currentModel) {
+        try {
+          const models = await provider.listModels();
+          setAvailableModels(models);
+          if (models.length > 0) {
+            setCurrentModel(models[0].id);
+          }
+        } catch {
+          // Provider might not be available (e.g., Ollama not running)
+        }
+      }
 
-        while (continueLoop && turns < maxTurns) {
-          turns++;
-          let assistantContent = '';
-          let toolCalls: Message['toolCalls'] = [];
+      setEngineReady(true);
 
-          const chatOptions = {
-            model: currentModel,
-            provider: providerConfig.type,
-            messages: loopMessages,
-            tools: toolRegistry.getDefinitions(),
-            stream: true,
-            maxTokens: settings.maxTokens,
-          } as import('@fridaycode/shared').ChatOptions;
+      if (initialPrompt) {
+        // Small delay to let React render first
+        setTimeout(() => sendMessage(initialPrompt!), 100);
+      }
+    } catch (err: any) {
+      setErrorMsg(`Failed to initialize: ${err.message}`);
+      setState('error');
+    }
+  }
 
+  // ─── Send Message (Agentic Loop) ──────────────────────────
+  async function sendMessage(content: string) {
+    if (!providerRef.current || !coreRef.current) {
+      addSystemMessage('Engine not ready. Please wait...');
+      return;
+    }
+
+    const provider = providerRef.current;
+    const { toolRegistry, permissions, hooks, session } = coreRef.current;
+
+    abortRef.current = new AbortController();
+    const userMsg: Message = { role: 'user', content, timestamp: Date.now() };
+    allMessagesRef.current = [...allMessagesRef.current, userMsg];
+    setMessages((prev) => [...prev, userMsg]);
+    setState('streaming');
+    setStreamContent('');
+
+    try {
+      let loopMessages = [...allMessagesRef.current];
+      let continueLoop = true;
+      let turns = 0;
+      const maxTurns = options.maxTurns ?? settings.compactMessageThreshold ?? 50;
+
+      while (continueLoop && turns < maxTurns) {
+        turns++;
+        let assistantContent = '';
+        let toolCalls: Message['toolCalls'] = [];
+
+        const modelToUse = currentModel || 'llama3.1';
+
+        const chatOptions = {
+          model: modelToUse,
+          provider: (providerRef.current as any).type ?? currentProvider,
+          messages: loopMessages,
+          tools: toolRegistry.getDefinitions(),
+          stream: true,
+          maxTokens: settings.maxTokens,
+        } as import('@fridaycode/shared').ChatOptions;
+
+        try {
           for await (const chunk of provider.chat(chatOptions)) {
-            if (abortController.signal.aborted) break;
+            if (abortRef.current.signal.aborted) break;
 
             switch (chunk.type) {
               case 'text':
@@ -150,50 +221,71 @@ export function App({ settings, initialPrompt, options }: AppProps) {
                   toolCalls.push(chunk.toolCall);
                 }
                 break;
+              case 'error':
+                addSystemMessage(`Error: ${chunk.content}`);
+                setState('idle');
+                return;
               case 'done':
                 if (chunk.usage) {
                   setTokenCount((prev) => ({
-                    input: prev.input + chunk.usage!.inputTokens,
-                    output: prev.output + chunk.usage!.outputTokens,
+                    input: prev.input + (chunk.usage?.inputTokens ?? 0),
+                    output: prev.output + (chunk.usage?.outputTokens ?? 0),
                   }));
                 }
                 break;
             }
           }
-
-          if (abortController.signal.aborted) break;
-
-          const assistantMsg: Message = {
-            role: 'assistant',
-            content: assistantContent,
-            toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
-            timestamp: Date.now(),
-          };
-          loopMessages = [...loopMessages, assistantMsg];
-
-          if (!toolCalls || toolCalls.length === 0) {
-            continueLoop = false;
-            break;
+        } catch (err: any) {
+          const errText = err.message || String(err);
+          if (errText.includes('ECONNREFUSED') || errText.includes('fetch failed')) {
+            addSystemMessage(`Cannot connect to ${currentProvider}. Is the server running?`);
+          } else {
+            addSystemMessage(`Provider error: ${errText}`);
           }
+          setState('idle');
+          return;
+        }
 
-          // Execute tool calls
-          setState('tool-running');
-          for (const toolCall of toolCalls) {
-            const context = {
-              workingDir: process.cwd(),
-              sessionId: session.id,
-              permissions,
-              hooks,
-              settings,
-              abortSignal: abortController.signal,
-            } as ToolContext;
+        if (abortRef.current.signal.aborted) {
+          addSystemMessage('Aborted.');
+          break;
+        }
 
+        const assistantMsg: Message = {
+          role: 'assistant',
+          content: assistantContent,
+          toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+          timestamp: Date.now(),
+        };
+        loopMessages = [...loopMessages, assistantMsg];
+
+        if (!toolCalls || toolCalls.length === 0) {
+          continueLoop = false;
+          break;
+        }
+
+        // Execute tool calls
+        setState('tool-running');
+        for (const toolCall of toolCalls) {
+          setToolStatus({ name: toolCall.name, status: 'running' });
+
+          const context = {
+            workingDir: process.cwd(),
+            sessionId: session.id,
+            permissions,
+            hooks,
+            settings,
+            abortSignal: abortRef.current.signal,
+          } as ToolContext;
+
+          try {
             const result = await toolRegistry.execute(
               toolCall.name,
               toolCall.input,
               context,
             );
             result.toolCallId = toolCall.id;
+            setToolStatus({ name: toolCall.name, status: 'done' });
 
             const toolMsg: Message = {
               role: 'tool',
@@ -202,92 +294,128 @@ export function App({ settings, initialPrompt, options }: AppProps) {
               timestamp: Date.now(),
             };
             loopMessages = [...loopMessages, toolMsg];
+          } catch (err: any) {
+            setToolStatus({ name: toolCall.name, status: 'error' });
+            const toolMsg: Message = {
+              role: 'tool',
+              content: `Error: ${err.message}`,
+              toolCallId: toolCall.id,
+              timestamp: Date.now(),
+            };
+            loopMessages = [...loopMessages, toolMsg];
           }
-
-          setState('streaming');
-          setStreamContent('');
         }
 
-        // Final: sync all messages
-        const finalAssistant = loopMessages.filter((m) => m.role !== 'user' || m === userMsg);
-        allMessages = loopMessages;
-        setMessages([...loopMessages]);
+        setState('streaming');
         setStreamContent('');
-        setState('idle');
-      },
+      }
 
-      abort: () => {
-        abortController.abort();
-        setState('idle');
-      },
-
-      compact: async () => {
-        const { keepMessages, summaryInput } = prepareCompactionPrompt(allMessages);
-        if (!summaryInput) return;
-        // Use the model to generate the summary
-        let summary = '';
-        const compactOptions = {
-          model: currentModel,
-          provider: providerConfig.type,
-          messages: [{ role: 'user' as const, content: summaryInput }],
-          stream: true,
-          maxTokens: 1024,
-        } as import('@fridaycode/shared').ChatOptions;
-        for await (const chunk of provider.chat(compactOptions)) {
-          if (chunk.type === 'text' && chunk.content) {
-            summary += chunk.content;
-          }
-        }
-        allMessages = applyCompaction(summary, keepMessages);
-        setMessages([...allMessages]);
-      },
-    };
+      allMessagesRef.current = loopMessages;
+      setMessages([...loopMessages]);
+      setStreamContent('');
+      setToolStatus(null);
+      setState('idle');
+    } catch (err: any) {
+      addSystemMessage(`Unexpected error: ${err.message}`);
+      setState('idle');
+    }
   }
 
+  function addSystemMessage(text: string) {
+    setMessages((prev) => [...prev, {
+      role: 'system' as const,
+      content: text,
+      timestamp: Date.now(),
+    }]);
+  }
+
+  // ─── Compact ───────────────────────────────────────────────
+  async function compact() {
+    if (!coreRef.current || !providerRef.current) return;
+    const { prepareCompactionPrompt, applyCompaction } = coreRef.current;
+    const { keepMessages, summaryInput } = prepareCompactionPrompt(allMessagesRef.current);
+    if (!summaryInput) {
+      addSystemMessage('Nothing to compact.');
+      return;
+    }
+    addSystemMessage('Compacting context...');
+    let summary = '';
+    const compactOptions = {
+      model: currentModel,
+      provider: (providerRef.current as any).type ?? currentProvider,
+      messages: [{ role: 'user' as const, content: summaryInput }],
+      stream: true,
+      maxTokens: 1024,
+    } as import('@fridaycode/shared').ChatOptions;
+    for await (const chunk of providerRef.current.chat(compactOptions)) {
+      if (chunk.type === 'text' && chunk.content) {
+        summary += chunk.content;
+      }
+    }
+    allMessagesRef.current = applyCompaction(summary, keepMessages);
+    setMessages([...allMessagesRef.current]);
+    addSystemMessage('Context compacted.');
+  }
+
+  // ─── Handle Submit ─────────────────────────────────────────
   const handleSubmit = useCallback(
     async (content: string) => {
       if (!content.trim()) return;
 
-      // Route all slash commands through the unified router
+      // Slash commands
       if (content.startsWith('/')) {
+        // Special handling for /context toggle
+        if (content.trim() === '/context') {
+          setShowContext((prev) => !prev);
+          return;
+        }
+
+        // Handle /model with interactive picker
+        if (content.trim() === '/model' && availableModels.length > 0) {
+          setState('model-select');
+          return;
+        }
+        // Handle /model with no models cached — try to fetch
+        if (content.trim() === '/model' && providerRef.current) {
+          try {
+            const models = await providerRef.current.listModels();
+            setAvailableModels(models);
+            if (models.length > 0) {
+              setState('model-select');
+              return;
+            }
+          } catch {
+            addSystemMessage('Could not fetch models from provider.');
+            return;
+          }
+        }
+
         const handled = await executeCommand(content, {
           cwd: process.cwd(),
-          sessionId: undefined,
+          sessionId: coreRef.current?.session?.id,
           model: currentModel,
           provider: currentProvider,
-          print: (text) => {
-            setMessages((prev) => [
-              ...prev,
-              { role: 'system', content: text, timestamp: Date.now() },
-            ]);
-          },
-          setModel: (model) => {
-            setCurrentModel(model);
-          },
-          setProvider: (prov) => {
-            setCurrentProvider(prov);
-          },
+          print: (text: string) => addSystemMessage(text),
+          setModel: (model: string) => setCurrentModel(model),
+          setProvider: (prov: string) => setCurrentProvider(prov),
           clearMessages: () => {
             setMessages([]);
+            allMessagesRef.current = [];
           },
-          exit: () => {
-            exit();
-          },
-          compact: async () => {
-            await engineRef.current?.compact();
-          },
+          exit: () => exit(),
+          compact: () => compact(),
         });
         if (handled) return;
       }
 
       if (showWelcome) setShowWelcome(false);
 
-      await engineRef.current?.sendMessage(content);
+      await sendMessage(content);
     },
-    [messages, currentModel, currentProvider, showWelcome],
+    [currentModel, currentProvider, showWelcome, engineReady, availableModels],
   );
 
-  // Permission prompt handlers
+  // ─── Permission Handlers ───────────────────────────────────
   const handlePermissionAllow = useCallback(() => {
     pendingPermission?.resolve(true);
     setPendingPermission(null);
@@ -306,27 +434,73 @@ export function App({ settings, initialPrompt, options }: AppProps) {
     setState('tool-running');
   }, [pendingPermission]);
 
-  // Global key handlers
+  // ─── Model Switcher Handlers ───────────────────────────────
+  const handleModelSelect = useCallback((modelId: string) => {
+    setCurrentModel(modelId);
+    addSystemMessage(`Model switched to ${modelId}`);
+    setState('idle');
+  }, []);
+
+  const handleModelCancel = useCallback(() => {
+    setState('idle');
+  }, []);
+
+  // ─── Global Keys ──────────────────────────────────────────
   useInput((input, key) => {
     if (key.ctrl && input === 'c') {
       if (state === 'streaming' || state === 'tool-running') {
-        engineRef.current?.abort();
+        abortRef.current.abort();
+        setState('idle');
       } else {
         exit();
       }
     }
   });
 
+  // ─── Render ────────────────────────────────────────────────
+  const isLoading = state === 'streaming' || state === 'loading' || state === 'tool-running';
+
   return (
-    <Box flexDirection="column" height="100%">
-      {showWelcome && <WelcomeScreen settings={settings} />}
+    <Box flexDirection="column">
+      {/* Welcome screen */}
+      {showWelcome && state !== 'model-select' && (
+        <WelcomeScreen settings={{...settings, activeModel: currentModel, activeProvider: currentProvider}} cwd={process.cwd()} />
+      )}
 
-      <Output messages={messages} streamContent={streamContent} state={state} />
+      {/* Error display */}
+      {state === 'error' && errorMsg && (
+        <Box marginY={1}>
+          <Text color="#F43F5E" bold>Error: </Text>
+          <Text>{errorMsg}</Text>
+        </Box>
+      )}
 
+      {/* Model switcher overlay */}
+      {state === 'model-select' && (
+        <ModelSwitcher
+          models={availableModels}
+          currentModel={currentModel}
+          onSelect={handleModelSelect}
+          onCancel={handleModelCancel}
+        />
+      )}
+
+      {/* Messages + streaming output */}
+      {state !== 'model-select' && (
+        <Output
+          messages={messages}
+          streamContent={streamContent}
+          state={state}
+          toolStatus={toolStatus ?? undefined}
+        />
+      )}
+
+      {/* Background tasks */}
       {backgroundTasks.length > 0 && (
         <TaskList tasks={backgroundTasks} visible={true} />
       )}
 
+      {/* Context viewer */}
       {showContext && (
         <ContextViewer
           inputTokens={tokenCount.input}
@@ -336,6 +510,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         />
       )}
 
+      {/* Permission prompt */}
       {state === 'permission' && pendingPermission && (
         <PermissionPrompt
           toolName={pendingPermission.toolName}
@@ -346,14 +521,22 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         />
       )}
 
-      <StatusBar
-        model={currentModel}
-        provider={currentProvider}
-        tokenCount={tokenCount}
-        state={state}
-      />
-
-      <Prompt onSubmit={handleSubmit} disabled={state !== 'idle' && state !== 'welcome'} />
+      {/* Status line + prompt */}
+      {state !== 'model-select' && (
+        <Box flexDirection="column" marginTop={0}>
+          <StatusLine
+            model={currentModel}
+            provider={currentProvider}
+            tokenCount={tokenCount}
+            state={state}
+          />
+          <Prompt
+            onSubmit={handleSubmit}
+            disabled={state === 'permission' || state === 'error'}
+            loading={isLoading}
+          />
+        </Box>
+      )}
     </Box>
   );
 }

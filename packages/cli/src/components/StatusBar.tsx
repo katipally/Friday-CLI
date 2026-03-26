@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { COLORS, APP_NAME } from '@fridaycode/shared';
 
 interface StatusBarProps {
   model: string;
@@ -10,50 +9,36 @@ interface StatusBarProps {
 }
 
 export function StatusBar({ model, provider, tokenCount, state }: StatusBarProps) {
-  const stateIndicator = getStateIndicator(state);
   const totalTokens = tokenCount.input + tokenCount.output;
 
   return (
-    <Box
-      borderStyle="single"
-      borderColor={COLORS.midnightSlate}
-      paddingX={1}
-      justifyContent="space-between"
-    >
-      <Box gap={2}>
-        <Text color={COLORS.deepViolet} bold>
-          {APP_NAME}
-        </Text>
-        <Text color={COLORS.icySlate}>
-          {provider}/{model}
-        </Text>
-      </Box>
-
-      <Box gap={2}>
-        <Text color={COLORS.midnightSlate}>
-          {totalTokens > 0 ? `${totalTokens.toLocaleString()} tokens` : ''}
-        </Text>
-        <Text color={stateIndicator.color}>{stateIndicator.text}</Text>
-      </Box>
+    <Box paddingX={0} marginTop={0}>
+      <Text dimColor>
+        {'─'.repeat(60)}
+      </Text>
     </Box>
   );
 }
 
-function getStateIndicator(state: string): { text: string; color: string } {
-  switch (state) {
-    case 'streaming':
-      return { text: '● Streaming', color: COLORS.acidicPistachio };
-    case 'tool-running':
-      return { text: '⟳ Tool Running', color: COLORS.starkRose };
-    case 'loading':
-      return { text: '● Loading', color: COLORS.deepViolet };
-    case 'permission':
-      return { text: '? Permission', color: COLORS.starkRose };
-    case 'idle':
-      return { text: '● Ready', color: COLORS.acidicPistachio };
-    case 'welcome':
-      return { text: '● Welcome', color: COLORS.deepViolet };
-    default:
-      return { text: '', color: COLORS.midnightSlate };
-  }
+// Compact inline status shown above prompt
+export function StatusLine({ model, provider, tokenCount, state }: StatusBarProps) {
+  const totalTokens = tokenCount.input + tokenCount.output;
+  const stateIcon = state === 'streaming' ? '●'
+    : state === 'tool-running' ? '⟳'
+    : state === 'loading' ? '◌'
+    : '●';
+  const stateColor = state === 'streaming' ? '#A3E635'
+    : state === 'tool-running' ? '#22D3EE'
+    : state === 'loading' ? '#8B5CF6'
+    : '#64748B';
+
+  return (
+    <Box paddingX={0} gap={1} marginBottom={0}>
+      <Text color={stateColor}>{stateIcon}</Text>
+      <Text dimColor>{provider}/{model || 'auto'}</Text>
+      {totalTokens > 0 && (
+        <Text dimColor>· {totalTokens.toLocaleString()} tokens</Text>
+      )}
+    </Box>
+  );
 }

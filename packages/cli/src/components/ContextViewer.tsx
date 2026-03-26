@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { COLORS } from '@fridaycode/shared';
 
 interface ContextViewerProps {
   inputTokens: number;
@@ -17,46 +16,28 @@ export function ContextViewer({
 }: ContextViewerProps) {
   const totalTokens = inputTokens + outputTokens;
   const usagePercent = contextLimit > 0 ? (totalTokens / contextLimit) * 100 : 0;
-  const barWidth = 40;
+  const barWidth = 30;
   const filledWidth = Math.round((usagePercent / 100) * barWidth);
 
   const barColor =
-    usagePercent > 90
-      ? COLORS.starkRose
-      : usagePercent > 70
-        ? COLORS.deepViolet
-        : COLORS.acidicPistachio;
+    usagePercent > 90 ? '#F43F5E'
+    : usagePercent > 70 ? '#FBBF24'
+    : '#A3E635';
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="single"
-      borderColor={COLORS.midnightSlate}
-      paddingX={1}
-    >
-      <Text color={COLORS.deepViolet} bold>
-        Context Usage
-      </Text>
-      <Box gap={1} marginTop={1}>
+    <Box flexDirection="column" marginY={1} paddingLeft={2}>
+      <Text color="#8B5CF6" bold>Context Usage</Text>
+      <Box gap={1} marginTop={0} marginLeft={2}>
         <Text color={barColor}>
           {'█'.repeat(filledWidth)}
-          {'░'.repeat(barWidth - filledWidth)}
+          <Text dimColor>{'░'.repeat(barWidth - filledWidth)}</Text>
         </Text>
-        <Text color={COLORS.icySlate}>{usagePercent.toFixed(1)}%</Text>
+        <Text dimColor>{usagePercent.toFixed(1)}%</Text>
       </Box>
-      <Box gap={2} marginTop={1}>
-        <Text>
-          <Text color={COLORS.midnightSlate}>Input: </Text>
-          <Text>{inputTokens.toLocaleString()}</Text>
-        </Text>
-        <Text>
-          <Text color={COLORS.midnightSlate}>Output: </Text>
-          <Text>{outputTokens.toLocaleString()}</Text>
-        </Text>
-        <Text>
-          <Text color={COLORS.midnightSlate}>Messages: </Text>
-          <Text>{messageCount}</Text>
-        </Text>
+      <Box gap={2} marginLeft={2}>
+        <Text dimColor>in: {inputTokens.toLocaleString()}</Text>
+        <Text dimColor>out: {outputTokens.toLocaleString()}</Text>
+        <Text dimColor>msgs: {messageCount}</Text>
       </Box>
     </Box>
   );

@@ -1,51 +1,49 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { Settings } from '@fridaycode/shared';
-import { APP_NAME, COLORS } from '@fridaycode/shared';
-import { renderLargeSpider } from './renderer.js';
+import { renderLargeSpider } from './spider.js';
 
 interface WelcomeScreenProps {
   settings: Settings;
+  cwd: string;
 }
 
-export function WelcomeScreen({ settings }: WelcomeScreenProps) {
+export function WelcomeScreen({ settings, cwd }: WelcomeScreenProps) {
   const spider = settings.showSpider !== false ? renderLargeSpider('greeting') : '';
+  const projectName = cwd.split('/').pop() ?? cwd;
 
   return (
-    <Box flexDirection="column" alignItems="center" paddingY={1}>
+    <Box flexDirection="column" alignItems="center" paddingY={0}>
       {settings.showSpider !== false && (
-        <Box>
-          <Text>{spider}</Text>
-        </Box>
+        <Text>{spider}</Text>
       )}
 
-      <Box marginTop={1}>
-        <Text color={COLORS.deepViolet} bold>
-          {'  '}
-          {APP_NAME}
+      <Text color="#8B5CF6" bold>
+        {'  '}◆ FridayCode
+      </Text>
+
+      <Box marginTop={0}>
+        <Text dimColor>
+          AI-powered coding assistant in your terminal
+        </Text>
+      </Box>
+
+      <Box marginTop={1} gap={1} flexDirection="column" alignItems="center">
+        <Text>
+          <Text dimColor>provider </Text>
+          <Text color="#A3E635" bold>{settings.activeProvider}</Text>
+          <Text dimColor>  model </Text>
+          <Text color="#A3E635" bold>{settings.activeModel || '(auto)'}</Text>
+        </Text>
+        <Text>
+          <Text dimColor>cwd </Text>
+          <Text color="#8B5CF6">{projectName}/</Text>
         </Text>
       </Box>
 
       <Box marginTop={1}>
-        <Text color={COLORS.icySlate}>
-          AI coding assistant in your terminal
-        </Text>
-      </Box>
-
-      <Box marginTop={1} gap={2}>
-        <Text color={COLORS.midnightSlate}>
-          Provider:{' '}
-          <Text color={COLORS.acidicPistachio}>{settings.activeProvider}</Text>
-        </Text>
-        <Text color={COLORS.midnightSlate}>
-          Model:{' '}
-          <Text color={COLORS.acidicPistachio}>{settings.activeModel}</Text>
-        </Text>
-      </Box>
-
-      <Box marginTop={1}>
-        <Text color={COLORS.midnightSlate} dimColor>
-          Type a message to start · /help for commands · Ctrl+C to exit
+        <Text dimColor>
+          Type a message to chat · /help for commands · Ctrl+C to exit
         </Text>
       </Box>
     </Box>

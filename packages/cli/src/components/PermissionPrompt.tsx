@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { COLORS } from '@fridaycode/shared';
 
 interface PermissionPromptProps {
   toolName: string;
@@ -24,42 +23,33 @@ export function PermissionPrompt({
     if (key.escape) onDeny();
   });
 
-  // Summarize the input for display
   const inputSummary = Object.entries(input)
+    .slice(0, 4)
     .map(([k, v]) => {
-      const val = typeof v === 'string' ? v.slice(0, 100) : JSON.stringify(v).slice(0, 100);
-      return `  ${k}: ${val}`;
+      const val = typeof v === 'string' ? v.slice(0, 80) : JSON.stringify(v).slice(0, 80);
+      return `    ${k}: ${val}`;
     })
     .join('\n');
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="double"
-      borderColor={COLORS.starkRose}
-      paddingX={1}
-      marginY={1}
-    >
-      <Text color={COLORS.starkRose} bold>
-        ⚠ Permission Required
+    <Box flexDirection="column" marginY={1} paddingLeft={2}>
+      <Text color="#F43F5E" bold>
+        ⚠  Permission required
       </Text>
-      <Box marginTop={1}>
+      <Box marginTop={0} marginLeft={3}>
         <Text>
-          Tool{' '}
-          <Text color={COLORS.deepViolet} bold>
-            {toolName}
-          </Text>{' '}
-          wants to execute:
+          <Text color="#22D3EE" bold>{toolName}</Text>
+          <Text dimColor> wants to execute:</Text>
         </Text>
       </Box>
-      <Box marginLeft={2} marginY={1}>
-        <Text color={COLORS.icySlate}>{inputSummary}</Text>
+      <Box marginLeft={3} marginTop={0}>
+        <Text dimColor>{inputSummary}</Text>
       </Box>
-      <Box gap={2}>
-        <Text color={COLORS.acidicPistachio}>[y] Allow</Text>
-        <Text color={COLORS.starkRose}>[n] Deny</Text>
-        <Text color={COLORS.deepViolet}>[a] Always allow</Text>
-        <Text color={COLORS.midnightSlate}>[Esc] Deny</Text>
+      <Box marginLeft={3} marginTop={1} gap={2}>
+        <Text color="#A3E635" bold>[y] Allow</Text>
+        <Text color="#F43F5E" bold>[n] Deny</Text>
+        <Text color="#8B5CF6">[a] Always</Text>
+        <Text dimColor>[esc] Cancel</Text>
       </Box>
     </Box>
   );
