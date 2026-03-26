@@ -1,7 +1,6 @@
 {
-  "name": "@anthropic-ai/friday-sdk",
+  "name": "@fridaycode/sdk",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,13 +13,23 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/friday-shared": "workspace:*",
-    "@anthropic-ai/friday-providers": "workspace:*",
-    "@anthropic-ai/friday-core": "workspace:*",
-    "@anthropic-ai/friday-tools": "workspace:*"
+    "@fridaycode/shared": "workspace:*",
+    "@fridaycode/providers": "workspace:*",
+    "@fridaycode/core": "workspace:*",
+    "@fridaycode/tools": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.5.0",
     "typescript": "^5.8.3"
+  },
+  "author": "katipally",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/katipally/Friday-CLI.git",
+    "directory": "packages/sdk"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

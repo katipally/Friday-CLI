@@ -1,5 +1,5 @@
 {
-  "name": "friday-cli-monorepo",
+  "name": "fridaycode-monorepo",
   "private": true,
   "description": "Open-source multi-provider AI coding agent for the terminal",
   "scripts": {
@@ -41,5 +41,15 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "author": "katipally",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/katipally/Friday-CLI.git"
+  },
+  "homepage": "https://github.com/katipally/Friday-CLI",
+  "bugs": {
+    "url": "https://github.com/katipally/Friday-CLI/issues"
+  }
 }

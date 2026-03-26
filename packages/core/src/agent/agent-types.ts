@@ -1,5 +1,5 @@
-import type { ToolCall, ToolResult, CostEntry, Message } from '@anthropic-ai/friday-shared';
-import type { ToolDefinition, TokenUsage } from '@anthropic-ai/friday-providers';
+import type { ToolCall, ToolResult, CostEntry, Message } from '@fridaycode/shared';
+import type { ToolDefinition, TokenUsage } from '@fridaycode/providers';
 
 export type AgentState = 'IDLE' | 'THINKING' | 'ACTING' | 'OBSERVING' | 'TERMINATED' | 'ERROR';
 

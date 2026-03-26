@@ -12,7 +12,7 @@ vi.mock('node:fs', () => ({
   },
 }));
 
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   getConfigDir: () => '/tmp/test-friday',
   createLogger: () => ({
     info: vi.fn(),

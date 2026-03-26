@@ -5,18 +5,18 @@ import { join } from 'node:path';
 import { Command } from 'commander';
 import React from 'react';
 import { render } from 'ink';
-import { createProvider } from '@anthropic-ai/friday-providers';
-import { AgentLoop, PermissionSystem, SessionManager, CostTracker } from '@anthropic-ai/friday-core';
-import { App } from '@anthropic-ai/friday-tui';
-import { createDefaultRegistry } from '@anthropic-ai/friday-tools';
-import { MCPServerManager } from '@anthropic-ai/friday-mcp';
+import { createProvider } from '@fridaycode/providers';
+import { AgentLoop, PermissionSystem, SessionManager, CostTracker } from '@fridaycode/core';
+import { App } from '@fridaycode/tui';
+import { createDefaultRegistry } from '@fridaycode/tools';
+import { MCPServerManager } from '@fridaycode/mcp';
 import { createCommandRegistry } from '../commands/index.js';
 import { loadConfig, loadProjectRules, ensureConfigDir } from '../config/loader.js';
 import { needsOnboarding, runOnboarding } from '../onboarding/wizard.js';
 import { getCurrentVersion } from '../config/version.js';
-import type { AgentEvent, AgentMode } from '@anthropic-ai/friday-core';
+import type { AgentEvent, AgentMode } from '@fridaycode/core';
 import type { CommandContext, CommandResult } from '../commands/types.js';
-import type { Session } from '@anthropic-ai/friday-core';
+import type { Session } from '@fridaycode/core';
 
 function detectProjectType(cwd: string): string | undefined {
   if (existsSync(join(cwd, 'package.json'))) return 'Node.js';

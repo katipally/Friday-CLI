@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock('@anthropic-ai/friday-shared', () => ({
 
 import { MessageHistory } from '../context/message-history.js';
 import { ContextManager } from '../context/context-manager.js';
-import type { Message } from '@anthropic-ai/friday-shared';
+import type { Message } from '@fridaycode/shared';
 
 function msg(role: Message['role'], content: string): Message {
   return { role, content };

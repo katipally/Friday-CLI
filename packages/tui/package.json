@@ -1,7 +1,6 @@
 {
-  "name": "@anthropic-ai/friday-tui",
+  "name": "@fridaycode/tui",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,8 +13,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@anthropic-ai/friday-shared": "workspace:*",
-    "@anthropic-ai/friday-core": "workspace:*",
+    "@fridaycode/shared": "workspace:*",
+    "@fridaycode/core": "workspace:*",
     "ink": "^5.0.0",
     "ink-text-input": "^6.0.0",
     "ink-spinner": "^5.0.0",
@@ -29,5 +28,15 @@
     "vitest": "^2.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0"
+  },
+  "author": "katipally",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/katipally/Friday-CLI.git",
+    "directory": "packages/tui"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

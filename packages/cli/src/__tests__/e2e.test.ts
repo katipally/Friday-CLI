@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock shared module used by loader
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

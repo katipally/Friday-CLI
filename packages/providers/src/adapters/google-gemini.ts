@@ -1,5 +1,5 @@
 import { GoogleGenAI, type Content, type Part, type FunctionDeclaration, type GenerateContentResponse } from '@google/genai';
-import { createLogger, ProviderError } from '@anthropic-ai/friday-shared';
+import { createLogger, ProviderError } from '@fridaycode/shared';
 import type {
   LLMProvider,
   GenerateRequest,

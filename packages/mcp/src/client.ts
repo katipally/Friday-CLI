@@ -1,4 +1,4 @@
-import { createLogger } from '@anthropic-ai/friday-shared';
+import { createLogger } from '@fridaycode/shared';
 import { StdioTransport } from './transport/stdio.js';
 import { HttpSseTransport } from './transport/http-sse.js';
 import type { MCPServerConfig, MCPServerInfo, MCPTool, MCPToolResult } from './types.js';

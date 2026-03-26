@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { createLogger } from '@anthropic-ai/friday-shared';
+import { createLogger } from '@fridaycode/shared';
 import { DEFAULT_RULES } from './default-rules.js';
 import type {
   PermissionAction,

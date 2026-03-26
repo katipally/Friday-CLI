@@ -30,13 +30,13 @@ Friday CLI is a powerful terminal-based AI assistant that supports 15+ LLM provi
 
 ```bash
 # npm
-npm install -g friday-cli
+npm install -g fridaycode
 
 # npx (no install)
-npx friday-cli
+npx fridaycode
 
-# Homebrew
-brew install friday-cli
+# pnpm
+pnpm add -g fridaycode
 ```
 
 ### Setup
@@ -141,7 +141,7 @@ packages/
 ├── tui/        # Ink-based terminal UI components
 ├── mcp/        # MCP client for community plugins
 ├── indexer/    # Tree-sitter codebase indexing
-├── sdk/        # Programmatic SDK (@friday/sdk)
+├── sdk/        # Programmatic SDK (@fridaycode/sdk)
 ├── i18n/       # Internationalization
 └── shared/     # Shared utilities, types, logger
 ```
@@ -152,13 +152,13 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ```bash
 # Clone and setup
-git clone https://github.com/anthropic-ai/friday-cli.git
-cd friday-cli
+git clone https://github.com/katipally/Friday-CLI.git
+cd Friday-CLI
 pnpm install
 pnpm build
 
 # Run in development
-pnpm --filter friday-cli dev
+pnpm --filter fridaycode dev
 
 # Run tests
 pnpm test
@@ -173,4 +173,4 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-**Built with ❤️ by the open-source community.**
+**Built with ❤️ by [katipally](https://github.com/katipally) and the open-source community.**

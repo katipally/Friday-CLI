@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { createLogger } from '@anthropic-ai/friday-shared';
+import { createLogger } from '@fridaycode/shared';
 import type { ProjectRules, RulesConfig } from './types.js';
 
 const logger = createLogger('rules');

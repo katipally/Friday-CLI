@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock shared package
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

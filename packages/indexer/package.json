@@ -1,7 +1,6 @@
 {
-  "name": "@anthropic-ai/friday-indexer",
+  "name": "@fridaycode/indexer",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,5 +15,15 @@
   "devDependencies": {
     "tsup": "^8.5.0",
     "typescript": "^5.8.3"
+  },
+  "author": "katipally",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/katipally/Friday-CLI.git",
+    "directory": "packages/indexer"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

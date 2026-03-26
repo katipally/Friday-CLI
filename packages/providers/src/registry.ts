@@ -1,5 +1,5 @@
 import { type LLMProvider, type ProviderConfig } from './types.js';
-import { createLogger, FridayError } from '@anthropic-ai/friday-shared';
+import { createLogger, FridayError } from '@fridaycode/shared';
 
 const logger = createLogger('providers');
 

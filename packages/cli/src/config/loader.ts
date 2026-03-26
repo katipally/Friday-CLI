@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createLogger, getConfigDir, ConfigError } from '@anthropic-ai/friday-shared';
+import { createLogger, getConfigDir, ConfigError } from '@fridaycode/shared';
 import { fridayConfigSchema, type FridayConfig } from './schema.js';
 
 const logger = createLogger('config');

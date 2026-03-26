@@ -1,7 +1,7 @@
-import type { ToolResult } from '@anthropic-ai/friday-shared';
-import type { ToolDefinition } from '@anthropic-ai/friday-providers';
-import type { AgentToolRegistry } from '@anthropic-ai/friday-core';
-import { createLogger, ToolError } from '@anthropic-ai/friday-shared';
+import type { ToolResult } from '@fridaycode/shared';
+import type { ToolDefinition } from '@fridaycode/providers';
+import type { AgentToolRegistry } from '@fridaycode/core';
+import { createLogger, ToolError } from '@fridaycode/shared';
 import type { Tool, ToolContext } from './types.js';
 
 const logger = createLogger('tools:registry');

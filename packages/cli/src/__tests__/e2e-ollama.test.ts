@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { createProvider } from '@anthropic-ai/friday-providers';
-import { AgentLoop, CostTracker, PermissionSystem } from '@anthropic-ai/friday-core';
-import { createDefaultRegistry } from '@anthropic-ai/friday-tools';
-import type { AgentEvent } from '@anthropic-ai/friday-core';
+import { createProvider } from '@fridaycode/providers';
+import { AgentLoop, CostTracker, PermissionSystem } from '@fridaycode/core';
+import { createDefaultRegistry } from '@fridaycode/tools';
+import type { AgentEvent } from '@fridaycode/core';
 
 const OLLAMA_MODEL = 'qwen3:thinking';
 const TIMEOUT = 180_000; // 3 minutes for thinking model
@@ -240,7 +240,7 @@ describe('E2E: Ollama Backend Pipeline', () => {
         path: 'package.json',
       });
       expect(result.success).toBe(true);
-      expect(result.output).toContain('friday-cli');
+      expect(result.output).toContain('fridaycode');
     });
 
     it('should execute directory_tree tool', async () => {
@@ -418,7 +418,7 @@ describe('E2E: Ollama Backend Pipeline', () => {
   
   describe('i18n', () => {
     it('should translate English strings', async () => {
-      const { I18n } = await import('@anthropic-ai/friday-i18n');
+      const { I18n } = await import('@fridaycode/i18n');
       const i18n = new I18n();
       const welcome = i18n.t('welcome');
       expect(welcome.length).toBeGreaterThan(0);
@@ -429,7 +429,7 @@ describe('E2E: Ollama Backend Pipeline', () => {
   
   describe('Project Indexer', () => {
     it('should detect this project as Node.js', async () => {
-      const { ProjectDetector } = await import('@anthropic-ai/friday-indexer');
+      const { ProjectDetector } = await import('@fridaycode/indexer');
       const detector = new ProjectDetector();
       const info = await detector.detect(process.cwd());
       expect(info.type).toBe('nodejs');

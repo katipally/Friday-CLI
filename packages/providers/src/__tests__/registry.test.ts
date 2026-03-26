@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the shared package before importing registry
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

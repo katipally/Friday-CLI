@@ -14,8 +14,8 @@ Thank you for your interest in contributing to Friday CLI! This guide will help 
 
 ```bash
 # Clone the repo
-git clone https://github.com/anthropic-ai/friday-cli.git
-cd friday-cli
+git clone https://github.com/katipally/Friday-CLI.git
+cd Friday-CLI
 
 # Install dependencies
 pnpm install
@@ -76,7 +76,7 @@ packages/
 - **Named exports** — no default exports
 - **ESM imports** — use `.js` extensions in import paths
 - **Functional patterns** — prefer functions over classes where practical
-- **Logging** — use `createLogger('namespace')` from `@anthropic-ai/friday-shared`
+- **Logging** — use `createLogger('namespace')` from `@fridaycode/shared`
 
 ## Commit Conventions
 
@@ -96,10 +96,10 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 pnpm test
 
 # Run tests for a specific package
-pnpm --filter @anthropic-ai/friday-core test
+pnpm --filter @fridaycode/core test
 
 # Run tests in watch mode
-pnpm --filter @anthropic-ai/friday-core test -- --watch
+pnpm --filter @fridaycode/core test -- --watch
 ```
 
 ## Pull Request Process

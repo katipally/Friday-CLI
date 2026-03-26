@@ -1,6 +1,6 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { ToolError } from '@anthropic-ai/friday-shared';
+import { ToolError } from '@fridaycode/shared';
 import type { Tool, ToolContext, ToolResult } from '../types.js';
 
 function resolveSafePath(filePath: string, workspaceRoot: string): string {

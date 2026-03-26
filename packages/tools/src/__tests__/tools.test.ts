@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 // Mock the logger used by ToolRegistry
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),

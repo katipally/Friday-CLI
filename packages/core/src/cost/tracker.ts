@@ -1,6 +1,6 @@
-import { createLogger, type CostEntry } from '@anthropic-ai/friday-shared';
-import { BudgetExceededError } from '@anthropic-ai/friday-shared';
-import type { TokenUsage } from '@anthropic-ai/friday-providers';
+import { createLogger, type CostEntry } from '@fridaycode/shared';
+import { BudgetExceededError } from '@fridaycode/shared';
+import type { TokenUsage } from '@fridaycode/providers';
 
 const logger = createLogger('cost');
 

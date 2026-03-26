@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useStdin } from 'ink';
-import type { AgentEvent, AgentMode } from '@anthropic-ai/friday-core';
+import type { AgentEvent, AgentMode } from '@fridaycode/core';
 import { WelcomeBanner } from './components/WelcomeBanner.js';
 import { MessageBubble } from './components/MessageBubble.js';
 import { InputBox } from './components/InputBox.js';

@@ -5,8 +5,8 @@ import * as path from 'node:path';
 import os from 'node:os';
 
 // Mock getDataDir to use a test directory
-vi.mock('@anthropic-ai/friday-shared', async () => {
-  const actual = await vi.importActual('@anthropic-ai/friday-shared') as Record<string, unknown>;
+vi.mock('@fridaycode/shared', async () => {
+  const actual = await vi.importActual('@fridaycode/shared') as Record<string, unknown>;
   return {
     ...actual,
     getDataDir: () => path.join(os.homedir(), '.friday-test-data'),

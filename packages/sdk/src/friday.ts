@@ -1,8 +1,8 @@
-import { AgentLoop } from '@anthropic-ai/friday-core';
-import { createProvider } from '@anthropic-ai/friday-providers';
-import { createDefaultRegistry } from '@anthropic-ai/friday-tools';
-import type { AgentEvent, AgentConfig } from '@anthropic-ai/friday-core';
-import type { ProviderConfig } from '@anthropic-ai/friday-providers';
+import { AgentLoop } from '@fridaycode/core';
+import { createProvider } from '@fridaycode/providers';
+import { createDefaultRegistry } from '@fridaycode/tools';
+import type { AgentEvent, AgentConfig } from '@fridaycode/core';
+import type { ProviderConfig } from '@fridaycode/providers';
 
 export interface FridayOptions {
   provider: ProviderConfig;

@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 import type { ChatCompletionMessageParam, ChatCompletionTool } from 'groq-sdk/resources/chat/completions';
-import { createLogger, ProviderError } from '@anthropic-ai/friday-shared';
+import { createLogger, ProviderError } from '@fridaycode/shared';
 import type {
   LLMProvider,
   GenerateRequest,

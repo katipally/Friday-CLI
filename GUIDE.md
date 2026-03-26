@@ -58,8 +58,8 @@
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/anthropic-ai/friday-cli.git
-cd friday-cli
+git clone https://github.com/katipally/Friday-CLI.git
+cd Friday-CLI
 
 # 2. Install dependencies
 pnpm install
@@ -88,8 +88,8 @@ That's it. You're chatting with an AI coding agent in your terminal.
 
 ```bash
 # Clone
-git clone https://github.com/anthropic-ai/friday-cli.git
-cd friday-cli
+git clone https://github.com/katipally/Friday-CLI.git
+cd Friday-CLI
 
 # Install all workspace dependencies
 pnpm install
@@ -120,7 +120,7 @@ friday --help
 
 ```bash
 # When published to npm:
-npm install -g friday-cli
+npm install -g fridaycode
 
 # Then just:
 friday
@@ -740,13 +740,13 @@ MCP tools appear alongside built-in tools and are available to the agent automat
 Use Friday as a library in your own Node.js/TypeScript applications:
 
 ```bash
-npm install @anthropic-ai/friday-sdk
+npm install @fridaycode/sdk
 ```
 
 ### Basic Usage
 
 ```typescript
-import { Friday } from '@anthropic-ai/friday-sdk';
+import { Friday } from '@fridaycode/sdk';
 
 const friday = new Friday({
   provider: {
@@ -845,7 +845,7 @@ for await (const event of friday.chat('Fix the bug in app.ts')) {
 ### Monorepo Structure
 
 ```
-friday-cli/
+Friday-CLI/
 ├── packages/
 │   ├── cli/        # CLI entry point, commands, config, onboarding
 │   ├── core/       # Agent loop, permissions, sessions, cost tracker
@@ -872,8 +872,8 @@ friday-cli/
 pnpm run build
 
 # Build a single package
-pnpm run build --filter friday-cli
-pnpm run build --filter @anthropic-ai/friday-core
+pnpm run build --filter fridaycode
+pnpm run build --filter @fridaycode/core
 
 # Watch mode (rebuilds on file changes)
 pnpm run dev
@@ -892,8 +892,8 @@ pnpm run clean
 pnpm run test
 
 # Run tests for a specific package
-pnpm --filter friday-cli run test
-pnpm --filter @anthropic-ai/friday-core run test
+pnpm --filter fridaycode run test
+pnpm --filter @fridaycode/core run test
 
 # Run with coverage
 pnpm run test:coverage
@@ -999,7 +999,7 @@ import './adapters/my-provider.js';
 
 3. Build and test:
 ```bash
-pnpm run build --filter @anthropic-ai/friday-providers
+pnpm run build --filter @fridaycode/providers
 friday -p my-provider -m my-model
 ```
 
@@ -1079,39 +1079,30 @@ registry.register(myCommand);
 
 ### Publishing to npm
 
-1. **Update package scope** — Change `@anthropic-ai/` to your own org in all `package.json` files:
-   ```bash
-   # Find all references
-   grep -r "@anthropic-ai/" packages/*/package.json
+The package scope is already configured as `@fridaycode/` for all internal packages, and the main CLI publishes as `fridaycode` on npm.
 
-   # Replace with your org (e.g., @myorg/)
-   find packages -name "package.json" -exec sed -i '' 's/@anthropic-ai\//@myorg\//g' {} +
-   ```
-
-2. **Bump version:**
-   ```bash
-   # Manual bump in packages/cli/package.json
-   # Or use changesets: npx changeset
-   ```
-
-3. **Login to npm:**
+1. **Login to npm:**
    ```bash
    npm login
-   # Or for scoped packages:
-   npm login --scope=@myorg
+   # For scoped packages:
+   npm login --scope=@fridaycode
    ```
 
-4. **Build and publish:**
+2. **Build and publish:**
    ```bash
    pnpm run build
-   pnpm run publish:all
+   pnpm run test
+   # Publish all packages (respects workspace order):
+   pnpm -r publish --access public --no-git-checks
    ```
 
-5. **Users can then install:**
+3. **Users can then install:**
    ```bash
-   npm install -g @myorg/friday-cli
+   npm install -g fridaycode
    friday --version
    ```
+
+4. **CI/CD Publishing** — A GitHub Actions workflow (`.github/workflows/publish.yml`) is included. Add an `NPM_TOKEN` secret to your repo, then create a GitHub Release to trigger automatic publishing.
 
 ### Building a Standalone Binary
 
@@ -1131,14 +1122,14 @@ The binary can be distributed directly — users don't need Node.js installed.
 
 For macOS users, you can create a Homebrew tap:
 
-1. Create a GitHub repo: `your-username/homebrew-tap`
+1. Create a GitHub repo: `katipally/homebrew-tap`
 2. Add a formula file `Formula/friday.rb`:
 
 ```ruby
 class Friday < Formula
   desc "Open-source multi-provider AI coding agent for the terminal"
-  homepage "https://github.com/your-username/friday-cli"
-  url "https://registry.npmjs.org/friday-cli/-/friday-cli-0.1.0.tgz"
+  homepage "https://github.com/katipally/Friday-CLI"
+  url "https://registry.npmjs.org/fridaycode/-/fridaycode-0.1.0.tgz"
   sha256 "YOUR_SHA256_HASH"
   license "MIT"
 
@@ -1157,7 +1148,7 @@ end
 
 3. Users install with:
 ```bash
-brew tap your-username/tap
+brew tap katipally/tap
 brew install friday
 ```
 

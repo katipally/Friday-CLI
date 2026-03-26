@@ -1,4 +1,4 @@
-import type { Message } from '@anthropic-ai/friday-shared';
+import type { Message } from '@fridaycode/shared';
 
 const PREVIEW_LENGTH = 200;
 

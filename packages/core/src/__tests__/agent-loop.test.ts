@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock dependencies before importing AgentLoop
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('../agent/modes/index.js', () => ({
 
 import { AgentLoop } from '../agent/agent-loop.js';
 import type { AgentConfig, AgentToolRegistry, AgentEvent } from '../agent/agent-types.js';
-import type { LLMProvider, StreamChunk, ToolDefinition } from '@anthropic-ai/friday-providers';
+import type { LLMProvider, StreamChunk, ToolDefinition } from '@fridaycode/providers';
 
 // Helper to collect all events from an async generator
 async function collectEvents(gen: AsyncGenerator<AgentEvent>): Promise<AgentEvent[]> {

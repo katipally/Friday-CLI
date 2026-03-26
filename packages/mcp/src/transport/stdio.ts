@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { createLogger } from '@anthropic-ai/friday-shared';
+import { createLogger } from '@fridaycode/shared';
 import type { MCPRequest, MCPResponse } from '../types.js';
 
 const logger = createLogger('mcp:stdio');

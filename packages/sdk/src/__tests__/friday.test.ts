@@ -4,7 +4,7 @@ const mockRun = vi.fn();
 const mockReset = vi.fn();
 
 // Mock all external dependencies before importing Friday
-vi.mock('@anthropic-ai/friday-shared', () => ({
+vi.mock('@fridaycode/shared', () => ({
   createLogger: () => ({
     debug: vi.fn(),
     info: vi.fn(),
@@ -13,11 +13,11 @@ vi.mock('@anthropic-ai/friday-shared', () => ({
   }),
 }));
 
-vi.mock('@anthropic-ai/friday-providers', () => ({
+vi.mock('@fridaycode/providers', () => ({
   createProvider: vi.fn(),
 }));
 
-vi.mock('@anthropic-ai/friday-tools', () => ({
+vi.mock('@fridaycode/tools', () => ({
   createDefaultRegistry: vi.fn(() => ({
     getToolDefinitions: () => [],
     execute: vi.fn(async () => ({ success: true, output: 'done' })),
@@ -25,7 +25,7 @@ vi.mock('@anthropic-ai/friday-tools', () => ({
   })),
 }));
 
-vi.mock('@anthropic-ai/friday-core', () => ({
+vi.mock('@fridaycode/core', () => ({
   AgentLoop: vi.fn().mockImplementation(() => ({
     run: mockRun,
     reset: mockReset,
@@ -33,8 +33,8 @@ vi.mock('@anthropic-ai/friday-core', () => ({
 }));
 
 import { Friday } from '../friday.js';
-import { createProvider } from '@anthropic-ai/friday-providers';
-import { AgentLoop } from '@anthropic-ai/friday-core';
+import { createProvider } from '@fridaycode/providers';
+import { AgentLoop } from '@fridaycode/core';
 
 async function* fakeEvents(events: Array<{ type: string; content?: string }>) {
   for (const e of events) {

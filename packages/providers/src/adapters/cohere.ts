@@ -1,5 +1,5 @@
 import { CohereClient } from 'cohere-ai';
-import { createLogger, ProviderError } from '@anthropic-ai/friday-shared';
+import { createLogger, ProviderError } from '@fridaycode/shared';
 import type {
   LLMProvider,
   GenerateRequest,

@@ -1,4 +1,4 @@
-import { createLogger } from '@anthropic-ai/friday-shared';
+import { createLogger } from '@fridaycode/shared';
 import { MCPClient } from './client.js';
 import type { MCPServerConfig, MCPServerInfo, MCPTool, MCPToolResult } from './types.js';
 

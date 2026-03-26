@@ -1,5 +1,5 @@
-import type { ToolResult } from '@anthropic-ai/friday-shared';
-import type { ToolDefinition } from '@anthropic-ai/friday-providers';
+import type { ToolResult } from '@fridaycode/shared';
+import type { ToolDefinition } from '@fridaycode/providers';
 
 export interface Tool {
   name: string;

@@ -1,6 +1,6 @@
-import { createLogger } from '@anthropic-ai/friday-shared';
-import type { Message, ToolResult } from '@anthropic-ai/friday-shared';
-import type { LLMProvider, GenerateResponse, StreamChunk } from '@anthropic-ai/friday-providers';
+import { createLogger } from '@fridaycode/shared';
+import type { Message, ToolResult } from '@fridaycode/shared';
+import type { LLMProvider, GenerateResponse, StreamChunk } from '@fridaycode/providers';
 import type { AgentState, AgentConfig, AgentEvent, AgentToolRegistry } from './agent-types.js';
 import { getModeSystemPrompt } from './modes/index.js';
 import { PermissionSystem } from '../permissions/index.js';

@@ -1,7 +1,7 @@
 import { Mistral } from '@mistralai/mistralai';
 import type { Messages } from '@mistralai/mistralai/models/components/chatcompletionrequest.js';
 import type { Tool } from '@mistralai/mistralai/models/components/tool.js';
-import { createLogger, ProviderError } from '@anthropic-ai/friday-shared';
+import { createLogger, ProviderError } from '@fridaycode/shared';
 import type {
   LLMProvider,
   GenerateRequest,

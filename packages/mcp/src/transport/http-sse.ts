@@ -1,4 +1,4 @@
-import { createLogger } from '@anthropic-ai/friday-shared';
+import { createLogger } from '@fridaycode/shared';
 import type { MCPRequest, MCPResponse } from '../types.js';
 
 const logger = createLogger('mcp:http-sse');

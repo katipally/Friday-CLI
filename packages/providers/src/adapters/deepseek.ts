@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { createLogger, ProviderError } from '@anthropic-ai/friday-shared';
+import { createLogger, ProviderError } from '@fridaycode/shared';
 import type {
   LLMProvider,
   GenerateRequest,

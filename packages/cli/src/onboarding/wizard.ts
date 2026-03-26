@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { getConfigDir, createLogger } from '@anthropic-ai/friday-shared';
+import { getConfigDir, createLogger } from '@fridaycode/shared';
 import { saveConfig, ensureConfigDir } from '../config/loader.js';
 
 const logger = createLogger('onboarding');

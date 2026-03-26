@@ -1,5 +1,5 @@
-import type { Message } from '@anthropic-ai/friday-shared';
-import { createLogger, getDataDir } from '@anthropic-ai/friday-shared';
+import type { Message } from '@fridaycode/shared';
+import { createLogger, getDataDir } from '@fridaycode/shared';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';

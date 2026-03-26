@@ -1,5 +1,5 @@
-import type { Message } from '@anthropic-ai/friday-shared';
-import type { ToolDefinition } from '@anthropic-ai/friday-providers';
+import type { Message } from '@fridaycode/shared';
+import type { ToolDefinition } from '@fridaycode/providers';
 import { MessageHistory } from './message-history.js';
 import { Summarizer } from './summarizer.js';
 

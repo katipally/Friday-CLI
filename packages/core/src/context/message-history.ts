@@ -1,4 +1,4 @@
-import type { Message } from '@anthropic-ai/friday-shared';
+import type { Message } from '@fridaycode/shared';
 
 export class MessageHistory {
   private messages: Message[] = [];
