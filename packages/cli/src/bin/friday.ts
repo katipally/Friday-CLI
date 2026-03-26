@@ -159,8 +159,9 @@ program
       // Detect project type
       const projectType = detectProjectType(workspacePath);
 
-      // Create agent with tools, permissions, and cost tracking
-      const agent = new AgentLoop(provider, {
+      // Create agent — wrapped in a function for recreation on model/provider change
+      let currentLLMProvider = provider;
+      let agent = new AgentLoop(currentLLMProvider, {
         provider: currentProvider,
         model: currentModel,
         mode: currentMode,
@@ -173,15 +174,41 @@ program
         costTracker,
       });
 
+      const recreateAgent = (newProvider?: string, newModel?: string, newMode?: string) => {
+        const history = agent.getHistory();
+        if (newProvider && newProvider !== currentProvider) {
+          currentProvider = newProvider;
+          const newConfig = config.providers[newProvider] || {};
+          currentLLMProvider = createProvider({
+            provider: newProvider,
+            apiKey: newConfig.apiKey,
+            baseUrl: newConfig.baseUrl,
+            model: newModel || currentModel,
+          });
+        }
+        if (newModel) currentModel = newModel;
+        if (newMode) currentMode = newMode as AgentMode;
+
+        agent = new AgentLoop(currentLLMProvider, {
+          provider: currentProvider,
+          model: currentModel,
+          mode: currentMode,
+          maxIterations: config.maxIterations,
+          projectRules: projectRules || undefined,
+          temperature: config.temperature,
+          maxTokens: config.maxTokens,
+        }, toolRegistry, {
+          permissionSystem,
+          costTracker,
+        });
+        // Restore history so conversation context is preserved
+        agent.loadHistory(history);
+      };
+
       // Slash command registry
       const commandRegistry = createCommandRegistry();
 
-      // Track cost
-      const totalCostAmount = session.totalCost;
-      const totalInputTok = session.totalInputTokens;
-      const totalOutputTok = session.totalOutputTokens;
-
-      // Build command context (used by slash commands)
+      // Build command context (used by slash commands) — always reads live values
       const buildCommandContext = (): CommandContext => ({
         currentProvider,
         currentModel,
@@ -193,12 +220,24 @@ program
         setMode: (m: string) => { currentMode = m as AgentMode; },
         clearHistory: () => agent.reset(),
         getHistory: () => agent.getHistory(),
-        getCostSummary: () => ({
-          totalCost: totalCostAmount,
-          inputTokens: totalInputTok,
-          outputTokens: totalOutputTok,
-        }),
+        getCostSummary: () => {
+          const tokens = costTracker.getTotalTokens();
+          return {
+            totalCost: costTracker.getTotalCost(),
+            inputTokens: tokens.input,
+            outputTokens: tokens.output,
+          };
+        },
+        toolRegistry: toolRegistry as any,
+        mcpManager: mcpManager as any,
       });
+
+      // Extract command info for autocomplete
+      const commandList = commandRegistry.getAll().map((c) => ({
+        name: c.name,
+        description: c.description,
+        aliases: c.aliases,
+      }));
 
       // Message handler — connects user input to agent loop
       const handleMessage = (message: string): AsyncGenerator<AgentEvent> => {
@@ -212,15 +251,17 @@ program
         return commandRegistry.execute(input, context);
       };
 
+      // State change handler — called by TUI when model/provider/mode changes
+      const handleStateChange = (state: { model?: string; provider?: string; mode?: string }) => {
+        recreateAgent(state.provider, state.model, state.mode);
+      };
+
       // Save session on exit
       const saveSessionOnExit = async () => {
         session.messages = agent.getHistory();
         session.mode = currentMode;
         session.model = currentModel;
         session.provider = currentProvider;
-        session.totalCost = totalCostAmount;
-        session.totalInputTokens = totalInputTok;
-        session.totalOutputTokens = totalOutputTok;
 
         await sessionManager.save(session);
         await mcpManager.stopAll();
@@ -284,6 +325,8 @@ program
           projectType,
           onMessage: handleMessage,
           onSlashCommand: handleSlashCommand,
+          onStateChange: handleStateChange,
+          commands: commandList,
         }),
       );
 

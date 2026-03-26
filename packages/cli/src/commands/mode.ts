@@ -41,6 +41,7 @@ export const modeCommand: SlashCommand = {
     return {
       output: `Switched to ${requested} mode — ${MODE_DESCRIPTIONS[requested]}`,
       type: 'success',
+      stateChange: { mode: requested },
     };
   },
 };

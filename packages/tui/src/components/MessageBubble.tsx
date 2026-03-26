@@ -8,10 +8,6 @@ interface MessageBubbleProps {
   toolName?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Simple regex-based markdown renderer (no external libraries)
-// ---------------------------------------------------------------------------
-
 function renderInlineMarkdown(text: string): React.ReactNode[] {
   const regex = /(\*\*(.+?)\*\*)|(`(.+?)`)|(\*(.+?)\*)/g;
   const parts: React.ReactNode[] = [];
@@ -31,13 +27,13 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
       );
     } else if (match[4]) {
       parts.push(
-        <Text key={`c${key++}`} color="green">
+        <Text key={`c${key++}`} color="cyan">
           {match[4]}
         </Text>,
       );
     } else if (match[6]) {
       parts.push(
-        <Text key={`i${key++}`} italic>
+        <Text key={`i${key++}`} dimColor>
           {match[6]}
         </Text>,
       );
@@ -74,15 +70,15 @@ function renderMarkdown(text: string): React.ReactNode[] {
     const lang = match[1];
     const code = match[2].trimEnd();
     elements.push(
-      <Box key={`cb${key++}`} flexDirection="column" marginY={1}>
+      <Box key={`cb${key++}`} flexDirection="column" marginY={0}>
         <Text color="gray" dimColor>
-          {`── ${lang || 'code'} ${'─'.repeat(20)}`}
+          {`\u2500\u2500 ${lang || 'code'} ${'─'.repeat(40)}`}
         </Text>
         <Box paddingLeft={1}>
           <Text color="greenBright">{code}</Text>
         </Box>
         <Text color="gray" dimColor>
-          {'─'.repeat(25)}
+          {'\u2500'.repeat(45)}
         </Text>
       </Box>,
     );
@@ -116,37 +112,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   role,
   content,
   isStreaming = false,
-  toolName,
 }) => {
-  const getRoleDisplay = () => {
-    switch (role) {
-      case 'user':
-        return { icon: '👤', color: 'cyan' as const, label: 'You' };
-      case 'assistant':
-        return { icon: '🤖', color: 'green' as const, label: 'Friday' };
-      case 'tool':
-        return { icon: '🔧', color: 'yellow' as const, label: toolName || 'Tool' };
-      case 'system':
-        return { icon: 'ℹ️', color: 'gray' as const, label: 'System' };
-    }
-  };
+  if (!content && !isStreaming) return null;
 
-  const display = getRoleDisplay();
+  if (role === 'user') {
+    return (
+      <Box marginBottom={1}>
+        <Text color="cyan" bold wrap="wrap">
+          {content}
+        </Text>
+      </Box>
+    );
+  }
 
+  if (role === 'system') {
+    return (
+      <Box marginBottom={1} paddingLeft={1}>
+        <Text color="gray" wrap="wrap">
+          {content}
+        </Text>
+      </Box>
+    );
+  }
+
+  // Assistant
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Box gap={1}>
-        <Text>{display.icon}</Text>
-        <Text color={display.color} bold>
-          {display.label}
+      {isStreaming && !content && (
+        <Text color="gray" dimColor>
+          {'\u25CF Thinking...'}
         </Text>
-        {isStreaming && <Text color="yellow">●</Text>}
-      </Box>
-      <Box marginLeft={3} flexDirection="column">
-        {role === 'assistant' ? (
-          renderMarkdown(content)
-        ) : (
-          <Text wrap="wrap">{content}</Text>
+      )}
+      <Box flexDirection="column">
+        {renderMarkdown(content)}
+        {isStreaming && content && (
+          <Text color="yellow">{' \u2588'}</Text>
         )}
       </Box>
     </Box>

@@ -349,6 +349,10 @@ export class AgentLoop {
     this.iteration = 0;
   }
 
+  loadHistory(messages: Message[]): void {
+    this.history = [...messages];
+  }
+
   addSystemMessage(content: string): void {
     this.history.push({ role: 'system', content });
   }

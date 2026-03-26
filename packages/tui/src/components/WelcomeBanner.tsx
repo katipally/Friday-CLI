@@ -17,39 +17,41 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
   projectType,
 }) => {
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      <Text color="cyan" bold>
-        {`
-  ███████╗██████╗ ██╗██████╗  █████╗ ██╗   ██╗
-  ██╔════╝██╔══██╗██║██╔══██╗██╔══██╗╚██╗ ██╔╝
-  █████╗  ██████╔╝██║██║  ██║███████║ ╚████╔╝
-  ██╔══╝  ██╔══██╗██║██║  ██║██╔══██║  ╚██╔╝
-  ██║     ██║  ██║██║██████╔╝██║  ██║   ██║
-  ╚═╝     ╚═╝  ╚═╝╚═╝╚═════╝ ╚═╝  ╚═╝   ╚═╝`}
-      </Text>
-      <Box marginLeft={2} marginTop={1} gap={2}>
-        <Text color="gray">v{version}</Text>
-        <Text color="gray">|</Text>
-        <Text color="green">{provider}/{model}</Text>
-        {mode && (
-          <>
-            <Text color="gray">|</Text>
-            <Text color="magenta">mode:{mode}</Text>
-          </>
-        )}
-        {projectType && (
-          <>
-            <Text color="gray">|</Text>
-            <Text color="yellow">{projectType}</Text>
-          </>
-        )}
-      </Box>
-      <Box marginLeft={2} marginTop={0} gap={2}>
-        <Text color="gray" dimColor>
-          Open-source AI coding agent • github.com/katipally/fridaycode
+    <Box flexDirection="column" paddingX={1} marginBottom={1}>
+      <Box gap={1}>
+        <Text color="green" bold>
+          {'\u2733'}
         </Text>
-        <Text color="gray">|</Text>
-        <Text color="cyan">Type /help for commands</Text>
+        <Text color="white" bold>
+          FridayCode
+        </Text>
+        <Text color="gray" dimColor>
+          v{version}
+        </Text>
+      </Box>
+
+      <Box marginLeft={2} flexDirection="column">
+        <Box gap={1}>
+          <Text color="gray">Model:</Text>
+          <Text color="cyan">{provider}/{model}</Text>
+          {mode && mode !== 'code' && (
+            <>
+              <Text color="gray">{'\u00B7'}</Text>
+              <Text color="magenta">{mode} mode</Text>
+            </>
+          )}
+          {projectType && (
+            <>
+              <Text color="gray">{'\u00B7'}</Text>
+              <Text color="yellow">{projectType}</Text>
+            </>
+          )}
+        </Box>
+        <Box gap={1}>
+          <Text color="gray" dimColor>
+            /help for commands {'\u00B7'} Ctrl+C to exit {'\u00B7'} Ctrl+L to clear
+          </Text>
+        </Box>
       </Box>
     </Box>
   );

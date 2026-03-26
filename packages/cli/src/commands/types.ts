@@ -56,4 +56,9 @@ export interface CommandResult {
   output: string;
   type: 'info' | 'success' | 'error' | 'table';
   exit?: boolean;
+  stateChange?: {
+    model?: string;
+    provider?: string;
+    mode?: string;
+  };
 }

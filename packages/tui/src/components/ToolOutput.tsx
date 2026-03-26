@@ -9,66 +9,35 @@ interface ToolOutputProps {
   isExecuting?: boolean;
 }
 
-const MAX_LINES = 50;
+const MAX_LINES = 30;
 
-function getToolIcon(name: string): string {
-  if (name.startsWith('file_') || name === 'directory_tree') return '📄';
-  if (name === 'shell_exec') return '💻';
-  if (name.startsWith('git')) return '🔀';
-  if (name === 'grep' || name === 'glob') return '🔍';
-  return '🔧';
-}
-
-function formatArgs(
+function formatToolHeader(
   toolName: string,
   args: Record<string, unknown>,
-): React.ReactNode {
+): string {
   if (toolName === 'shell_exec' && args.command) {
-    return (
-      <Text>
-        <Text color="yellow">$ </Text>
-        <Text color="white">{String(args.command)}</Text>
-      </Text>
-    );
+    return `$ ${String(args.command)}`;
   }
-
   if (
     (toolName.startsWith('file_') || toolName === 'directory_tree') &&
     (args.path || args.file_path)
   ) {
-    return <Text color="gray">{String(args.path ?? args.file_path)}</Text>;
+    return String(args.path ?? args.file_path);
   }
-
+  if ((toolName === 'grep' || toolName === 'glob') && args.pattern) {
+    return String(args.pattern);
+  }
   const str = JSON.stringify(args);
-  return (
-    <Text color="gray" dimColor>
-      {str.length > 80 ? str.substring(0, 80) + '…' : str}
-    </Text>
-  );
+  return str.length > 60 ? str.substring(0, 60) + '\u2026' : str;
 }
 
-function renderOutput(
-  output: string,
-  success: boolean | undefined,
-): React.ReactNode {
+function truncateOutput(output: string): { text: string; truncated: number } {
   const lines = output.split('\n');
-  const truncated = lines.length > MAX_LINES;
-  const displayText = truncated
-    ? lines.slice(0, MAX_LINES).join('\n')
-    : output;
-
-  return (
-    <>
-      <Text color={success === false ? 'red' : 'gray'} wrap="wrap">
-        {displayText}
-      </Text>
-      {truncated && (
-        <Text color="gray" dimColor>
-          [truncated, {lines.length - MAX_LINES} more lines]
-        </Text>
-      )}
-    </>
-  );
+  if (lines.length <= MAX_LINES) return { text: output, truncated: 0 };
+  return {
+    text: lines.slice(0, MAX_LINES).join('\n'),
+    truncated: lines.length - MAX_LINES,
+  };
 }
 
 export const ToolOutput: React.FC<ToolOutputProps> = ({
@@ -78,26 +47,50 @@ export const ToolOutput: React.FC<ToolOutputProps> = ({
   success,
   isExecuting = false,
 }) => {
-  const icon = isExecuting
-    ? '⏳'
-    : success
-      ? '✅'
-      : success === false
-        ? '❌'
-        : getToolIcon(toolName);
+  const statusIcon = isExecuting
+    ? '\u25B7'
+    : success === false
+      ? '\u2717'
+      : '\u25B6';
+
+  const statusColor = isExecuting
+    ? 'yellow'
+    : success === false
+      ? 'red'
+      : 'green';
+
+  const header = args ? formatToolHeader(toolName, args) : '';
 
   return (
-    <Box flexDirection="column" marginY={0} marginLeft={3}>
+    <Box flexDirection="column" marginLeft={1} marginBottom={0}>
       <Box gap={1}>
-        <Text>{icon}</Text>
-        <Text color="yellow" bold>
+        <Text color={statusColor as 'yellow' | 'red' | 'green'}>{statusIcon}</Text>
+        <Text color="white" bold>
           {toolName}
         </Text>
-        {args && formatArgs(toolName, args)}
+        {header && (
+          <Text color="gray" dimColor>
+            {header}
+          </Text>
+        )}
       </Box>
       {output && (
-        <Box marginLeft={3} marginTop={0} flexDirection="column">
-          {renderOutput(output, success)}
+        <Box marginLeft={3} flexDirection="column">
+          {(() => {
+            const { text, truncated } = truncateOutput(output);
+            return (
+              <>
+                <Text color={success === false ? 'red' : 'gray'} dimColor wrap="wrap">
+                  {text}
+                </Text>
+                {truncated > 0 && (
+                  <Text color="gray" dimColor>
+                    [{truncated} more lines]
+                  </Text>
+                )}
+              </>
+            );
+          })()}
         </Box>
       )}
     </Box>

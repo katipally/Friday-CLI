@@ -47,6 +47,7 @@ export const modelCommand: SlashCommand = {
     return {
       output: `Switched to model: ${modelName}`,
       type: 'success',
+      stateChange: { model: modelName },
     };
   },
 };

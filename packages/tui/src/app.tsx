@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Text, useApp, useStdin } from 'ink';
+import React, { useState, useCallback, useRef } from 'react';
+import { Box, Text, useApp, useInput } from 'ink';
 import type { AgentEvent, AgentMode } from '@fridaycode/core';
 import { WelcomeBanner } from './components/WelcomeBanner.js';
 import { MessageBubble } from './components/MessageBubble.js';
@@ -23,6 +23,17 @@ interface CommandResult {
   output: string;
   type: 'info' | 'success' | 'error' | 'table';
   exit?: boolean;
+  stateChange?: {
+    model?: string;
+    provider?: string;
+    mode?: string;
+  };
+}
+
+interface SlashCommandInfo {
+  name: string;
+  description: string;
+  aliases?: string[];
 }
 
 interface PendingPermission {
@@ -37,20 +48,30 @@ interface AppProps {
   provider: string;
   mode: AgentMode;
   projectType?: string;
+  commands?: SlashCommandInfo[];
   onMessage: (message: string) => AsyncGenerator<AgentEvent>;
   onSlashCommand?: (command: string, args: string) => Promise<CommandResult | null>;
+  onStateChange?: (state: { model?: string; provider?: string; mode?: string }) => void;
 }
 
 export const App: React.FC<AppProps> = ({
   version,
-  model,
-  provider,
-  mode,
+  model: initialModel,
+  provider: initialProvider,
+  mode: initialMode,
   projectType,
+  commands = [],
   onMessage,
   onSlashCommand,
+  onStateChange,
 }) => {
   const { exit } = useApp();
+
+  // Reactive state for model/provider/mode
+  const [activeModel, setActiveModel] = useState(initialModel);
+  const [activeProvider, setActiveProvider] = useState(initialProvider);
+  const [activeMode, setActiveMode] = useState<AgentMode>(initialMode);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [totalCost, setTotalCost] = useState(0);
@@ -58,6 +79,15 @@ export const App: React.FC<AppProps> = ({
   const [totalOutputTokens, setTotalOutputTokens] = useState(0);
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null);
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null);
+  const [inputHistory] = useState<string[]>([]);
+  const abortRef = useRef(false);
+
+  // Keyboard shortcuts (global)
+  useInput((input, key) => {
+    if (key.ctrl && input === 'l') {
+      setMessages([]);
+    }
+  });
 
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
@@ -86,6 +116,8 @@ export const App: React.FC<AppProps> = ({
     async (input: string) => {
       if (isProcessing) return;
 
+      inputHistory.push(input);
+
       // Handle slash commands
       if (input.startsWith('/')) {
         const [command, ...argParts] = input.slice(1).split(' ');
@@ -104,6 +136,13 @@ export const App: React.FC<AppProps> = ({
               if (result.exit) {
                 exit();
                 return;
+              }
+              // Apply state changes from commands
+              if (result.stateChange) {
+                if (result.stateChange.model) setActiveModel(result.stateChange.model);
+                if (result.stateChange.provider) setActiveProvider(result.stateChange.provider);
+                if (result.stateChange.mode) setActiveMode(result.stateChange.mode as AgentMode);
+                onStateChange?.(result.stateChange);
               }
               addMessage({
                 id: `cmd-${Date.now()}`,
@@ -128,6 +167,7 @@ export const App: React.FC<AppProps> = ({
 
       // Start processing
       setIsProcessing(true);
+      abortRef.current = false;
       const streamId = `assistant-${Date.now()}`;
       setCurrentStreamId(streamId);
       addMessage({ id: streamId, role: 'assistant', content: '', isStreaming: true });
@@ -135,6 +175,8 @@ export const App: React.FC<AppProps> = ({
       try {
         const events = onMessage(input);
         for await (const event of events) {
+          if (abortRef.current) break;
+
           switch (event.type) {
             case 'text_delta':
               updateLastAssistantMessage(event.content);
@@ -172,14 +214,13 @@ export const App: React.FC<AppProps> = ({
               break;
 
             case 'permission_granted':
-              // Tool execution will follow via tool_start — no extra message needed
               break;
 
             case 'permission_denied':
               addMessage({
                 id: `perm-denied-${Date.now()}`,
                 role: 'system',
-                content: `🚫 Permission denied: ${event.toolCall.name} — ${event.reason}`,
+                content: `Permission denied: ${event.toolCall.name}`,
               });
               break;
 
@@ -201,7 +242,6 @@ export const App: React.FC<AppProps> = ({
               break;
 
             case 'iteration':
-              // Optional: show iteration count for long-running agents
               break;
           }
         }
@@ -217,16 +257,16 @@ export const App: React.FC<AppProps> = ({
         setCurrentStreamId(null);
       }
     },
-    [isProcessing, onMessage, onSlashCommand, addMessage, updateLastAssistantMessage, finalizeStream, exit],
+    [isProcessing, onMessage, onSlashCommand, onStateChange, addMessage, updateLastAssistantMessage, finalizeStream, exit, inputHistory],
   );
 
   return (
     <Box flexDirection="column" width="100%">
       <WelcomeBanner
         version={version}
-        model={model}
-        provider={provider}
-        mode={mode}
+        model={activeModel}
+        provider={activeProvider}
+        mode={activeMode}
         projectType={projectType}
       />
 
@@ -254,7 +294,7 @@ export const App: React.FC<AppProps> = ({
         {isProcessing && !currentStreamId && <Spinner label="Thinking..." />}
       </Box>
 
-      {/* Permission Prompt (rendered inline when a permission is pending) */}
+      {/* Permission prompt */}
       {pendingPermission && (
         <PermissionPrompt
           toolName={pendingPermission.toolCall.name}
@@ -270,14 +310,14 @@ export const App: React.FC<AppProps> = ({
       <InputBox
         onSubmit={handleSubmit}
         isDisabled={isProcessing}
-        placeholder={isProcessing ? undefined : 'Ask Friday anything... (/ for commands)'}
+        commands={commands}
       />
 
       {/* Status Bar */}
       <StatusBar
-        model={model}
-        provider={provider}
-        mode={mode}
+        model={activeModel}
+        provider={activeProvider}
+        mode={activeMode}
         cost={totalCost}
         inputTokens={totalInputTokens}
         outputTokens={totalOutputTokens}
