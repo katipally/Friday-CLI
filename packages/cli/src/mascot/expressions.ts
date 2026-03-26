@@ -2,16 +2,16 @@ import type { SpiderExpression } from '@fridaycode/shared';
 
 /**
  * Spider expression eye patterns.
- * Each expression maps to a pair of eye characters.
+ * Each expression maps to a pair of eye characters with color hints.
  */
-export const EXPRESSIONS: Record<SpiderExpression, { left: string; right: string }> = {
-  idle: { left: '- ', right: ' -' },
-  thinking: { left: '• ', right: ' •' },
-  success: { left: '^ ', right: ' ^' },
-  error: { left: 'O ', right: ' O' },
-  working: { left: '> ', right: ' <' },
-  greeting: { left: '◕ ', right: ' ◕' },
-  confused: { left: '? ', right: ' ?' },
+export const EXPRESSIONS: Record<SpiderExpression, { left: string; right: string; color: string }> = {
+  idle:     { left: '◉', right: '◉', color: 'cyan' },
+  thinking: { left: '◎', right: '◎', color: 'violet' },
+  success:  { left: '✦', right: '✦', color: 'green' },
+  error:    { left: '⊗', right: '⊗', color: 'rose' },
+  working:  { left: '◉', right: '◉', color: 'amber' },
+  greeting: { left: '★', right: '★', color: 'green' },
+  confused: { left: '◌', right: '◌', color: 'rose' },
 };
 
 /**
@@ -19,5 +19,5 @@ export const EXPRESSIONS: Record<SpiderExpression, { left: string; right: string
  */
 export function getEyes(expression: SpiderExpression): string {
   const e = EXPRESSIONS[expression];
-  return `(${e.left}${e.right})`;
+  return `(${e.left} ${e.right})`;
 }

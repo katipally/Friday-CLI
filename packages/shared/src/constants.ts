@@ -1,10 +1,25 @@
 // ─── Color Palette ────────────────────────────────────────────
 export const COLORS = {
   deepViolet: '#8B5CF6',
+  violetLight: '#A78BFA',
+  violetDark: '#6D28D9',
   starkRose: '#F43F5E',
   acidicPistachio: '#A3E635',
   icySlate: '#F8FAFC',
   midnightSlate: '#334155',
+  amber: '#FBBF24',
+  cyan: '#22D3EE',
+  sky: '#38BDF8',
+  orange: '#FB923C',
+  pink: '#F472B6',
+  teal: '#2DD4BF',
+  indigo: '#818CF8',
+  slate400: '#94A3B8',
+  slate500: '#64748B',
+  slate600: '#475569',
+  slate700: '#334155',
+  slate800: '#1E293B',
+  slate900: '#0F172A',
 } as const;
 
 export const ANSI_COLORS = {
@@ -13,6 +28,14 @@ export const ANSI_COLORS = {
   acidicPistachio: 149,
   icySlate: 255,
   midnightSlate: 237,
+  amber: 214,
+  cyan: 87,
+  sky: 75,
+  orange: 215,
+  pink: 212,
+  teal: 86,
+  indigo: 105,
+  slate: 244,
 } as const;
 
 // ─── App Constants ───────────────────────────────────────────

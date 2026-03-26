@@ -31,10 +31,16 @@ export function PermissionPrompt({
     })
     .join('\n');
 
+  // Determine risk level
+  const isHighRisk = toolName.includes('exec') || toolName.includes('run') || toolName.includes('bash') ||
+                     toolName.includes('delete') || toolName.includes('remove') || toolName.includes('write');
+  const riskColor = isHighRisk ? '#F43F5E' : '#FBBF24';
+  const riskLabel = isHighRisk ? '⚠  HIGH RISK' : '⚠  Permission required';
+
   return (
     <Box flexDirection="column" marginY={1} paddingLeft={2}>
-      <Text color="#F43F5E" bold>
-        ⚠  Permission required
+      <Text color={riskColor} bold>
+        {riskLabel}
       </Text>
       <Box marginTop={0} marginLeft={3}>
         <Text>
@@ -48,8 +54,11 @@ export function PermissionPrompt({
       <Box marginLeft={3} marginTop={1} gap={2}>
         <Text color="#A3E635" bold>[y] Allow</Text>
         <Text color="#F43F5E" bold>[n] Deny</Text>
-        <Text color="#8B5CF6">[a] Always</Text>
+        <Text color="#8B5CF6">[a] Always allow</Text>
         <Text dimColor>[esc] Cancel</Text>
+      </Box>
+      <Box marginLeft={3} marginTop={0}>
+        <Text dimColor italic>  Shift+Tab to change permission mode</Text>
       </Box>
     </Box>
   );

@@ -17,9 +17,13 @@ import { ModelSwitcher } from './components/ModelSwitcher.js';
 import { executeCommand } from './commands/index.js';
 import { isOnboarded, markOnboarded, detectOllama } from './onboarding/wizard.js';
 import { setTheme } from './themes/engine.js';
+import { getPromptBarColor } from './mascot/spider.js';
 // Initialize themes
 import './themes/dark.js';
 import './themes/light.js';
+import './themes/cyberpunk.js';
+import './themes/dracula.js';
+import { execSync } from 'node:child_process';
 
 interface AppProps {
   settings: Settings;
@@ -64,6 +68,12 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [engineReady, setEngineReady] = useState(false);
   const [availableModels, setAvailableModels] = useState<Model[]>([]);
+  // New UI state
+  const [permissionMode, setPermissionMode] = useState<'default' | 'acceptAll' | 'plan'>('default');
+  const [verbose, setVerbose] = useState(false);
+  const [turnDuration, setTurnDuration] = useState(0);
+  const [gitBranch, setGitBranch] = useState('');
+  const [promptSuggestion, setPromptSuggestion] = useState('');
 
   // Refs for mutable state in closures
   const providerRef = useRef<ModelProvider | null>(null);
@@ -90,6 +100,16 @@ export function App({ settings, initialPrompt, options }: AppProps) {
       });
       markOnboarded().catch(() => {});
     }
+
+    // Detect git branch
+    try {
+      const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+        cwd: process.cwd(),
+        encoding: 'utf-8',
+        timeout: 2000,
+      }).trim();
+      setGitBranch(branch);
+    } catch { /* not in a git repo */ }
 
     initEngine();
   }, []);
@@ -183,6 +203,8 @@ export function App({ settings, initialPrompt, options }: AppProps) {
     setMessages((prev) => [...prev, userMsg]);
     setState('streaming');
     setStreamContent('');
+    setTurnDuration(0);
+    const turnStart = Date.now();
 
     try {
       let loopMessages = [...allMessagesRef.current];
@@ -314,6 +336,16 @@ export function App({ settings, initialPrompt, options }: AppProps) {
       setMessages([...loopMessages]);
       setStreamContent('');
       setToolStatus(null);
+      setTurnDuration(Date.now() - turnStart);
+      // Show a prompt suggestion after response
+      const suggestions = [
+        'Try: "explain this code"',
+        'Try: "what could be improved?"',
+        'Try: "write tests for this"',
+        'Try: /diff to see changes',
+        'Try: /compact if context is large',
+      ];
+      setPromptSuggestion(suggestions[Math.floor(Math.random() * suggestions.length)]);
       setState('idle');
     } catch (err: any) {
       addSystemMessage(`Unexpected error: ${err.message}`);
@@ -455,6 +487,25 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         exit();
       }
     }
+    // Ctrl+O: Toggle verbose mode
+    if (key.ctrl && input === 'o') {
+      setVerbose(v => !v);
+      addSystemMessage(verbose ? 'Verbose mode off' : 'Verbose mode on');
+    }
+    // Ctrl+T: Toggle context viewer
+    if (key.ctrl && input === 't') {
+      setShowContext(prev => !prev);
+    }
+    // Shift+Tab: Cycle permission modes
+    if (key.shift && key.tab) {
+      setPermissionMode(prev => {
+        const modes: ('default' | 'acceptAll' | 'plan')[] = ['default', 'acceptAll', 'plan'];
+        const idx = modes.indexOf(prev);
+        const next = modes[(idx + 1) % modes.length];
+        addSystemMessage(`Permission mode → ${next}`);
+        return next;
+      });
+    }
   });
 
   // ─── Render ────────────────────────────────────────────────
@@ -492,6 +543,8 @@ export function App({ settings, initialPrompt, options }: AppProps) {
           streamContent={streamContent}
           state={state}
           toolStatus={toolStatus ?? undefined}
+          verbose={verbose}
+          turnStartTime={turnDuration > 0 ? turnDuration : undefined}
         />
       )}
 
@@ -529,11 +582,19 @@ export function App({ settings, initialPrompt, options }: AppProps) {
             provider={currentProvider}
             tokenCount={tokenCount}
             state={state}
+            gitBranch={gitBranch}
+            permissionMode={permissionMode}
+            turnDuration={turnDuration}
           />
           <Prompt
             onSubmit={handleSubmit}
             disabled={state === 'permission' || state === 'error'}
             loading={isLoading}
+            model={currentModel}
+            provider={currentProvider}
+            permissionMode={permissionMode}
+            turnDuration={turnDuration}
+            suggestion={promptSuggestion}
           />
         </Box>
       )}

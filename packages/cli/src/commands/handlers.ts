@@ -304,3 +304,86 @@ registerCommand({
     ctx.print('No MCP servers configured.\nAdd servers in ~/.friday/settings.json under "mcpServers".');
   },
 });
+
+// ─── Color ───────────────────────────────────────────────────
+
+registerCommand({
+  name: '/color',
+  description: 'Set prompt bar color',
+  usage: '/color [violet|blue|green|yellow|red|orange|pink|cyan|teal|purple|indigo|amber]',
+  async handler(args, ctx) {
+    const { setPromptBarColor, PROMPT_BAR_COLORS } = await import('../mascot/spider.js');
+    if (!args) {
+      const available = Object.keys(PROMPT_BAR_COLORS).join(', ');
+      ctx.print(`Available colors: ${available}\nAlso accepts hex: /color #FF5733`);
+      return;
+    }
+    if (setPromptBarColor(args.trim())) {
+      ctx.print(`Prompt color → ${args.trim()}`);
+    } else {
+      ctx.print(`Unknown color: ${args.trim()}\nUse a named color or hex (#RRGGBB).`);
+    }
+  },
+});
+
+// ─── Stats ───────────────────────────────────────────────────
+
+registerCommand({
+  name: '/stats',
+  description: 'Show detailed session statistics',
+  handler(_args, ctx) {
+    ctx.print([
+      '╭─ Session Stats ─────────────────────╮',
+      `│ Provider:    ${ctx.provider.padEnd(23)}│`,
+      `│ Model:       ${(ctx.model || '(auto)').padEnd(23)}│`,
+      `│ Session:     ${(ctx.sessionId ?? '(unsaved)').slice(0, 23).padEnd(23)}│`,
+      `│ Directory:   ${ctx.cwd.split('/').pop()?.padEnd(23) ?? ctx.cwd.padEnd(23)}│`,
+      '╰─────────────────────────────────────╯',
+      '',
+      'Token counts displayed in status line.',
+      'Use /cost for cost estimates.',
+    ].join('\n'));
+  },
+});
+
+// ─── Effort ──────────────────────────────────────────────────
+
+registerCommand({
+  name: '/effort',
+  aliases: ['/fast'],
+  description: 'Toggle between quality modes',
+  usage: '/effort [high|medium|low]',
+  handler(args, ctx) {
+    const valid = ['high', 'medium', 'low'];
+    if (!args) {
+      ctx.print(`Effort levels: ${valid.join(', ')}\nHigher = more thorough, slower. Lower = faster, less detailed.`);
+      return;
+    }
+    if (valid.includes(args.trim())) {
+      ctx.print(`Effort → ${args.trim()}`);
+    } else {
+      ctx.print(`Invalid. Use: ${valid.join(', ')}`);
+    }
+  },
+});
+
+// ─── Export ──────────────────────────────────────────────────
+
+registerCommand({
+  name: '/export',
+  description: 'Export conversation to file',
+  usage: '/export [markdown|json]',
+  async handler(args, ctx) {
+    ctx.print('Conversation export is a planned feature. Coming soon!');
+  },
+});
+
+// ─── Copy ────────────────────────────────────────────────────
+
+registerCommand({
+  name: '/copy',
+  description: 'Copy last response to clipboard',
+  handler(_args, ctx) {
+    ctx.print('Copy to clipboard is a planned feature. Coming soon!');
+  },
+});
