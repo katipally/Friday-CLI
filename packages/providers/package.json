@@ -1,16 +1,22 @@
 {
   "name": "@fridaycode/providers",
   "version": "0.1.0",
+  "description": "Multi-provider LLM adapters with dynamic model fetching for FridayCode",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --dts --watch",
     "test": "vitest run",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@fridaycode/shared": "workspace:*",
@@ -39,5 +45,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": ["fridaycode", "llm", "providers", "openai", "anthropic", "gemini", "groq", "mistral"]
 }

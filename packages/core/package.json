@@ -1,16 +1,22 @@
 {
   "name": "@fridaycode/core",
   "version": "0.1.0",
+  "description": "Core agent engine, commands, sub-agents, skills, and cost tracking for FridayCode",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --dts --watch",
     "test": "vitest run",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@fridaycode/providers": "workspace:*",
@@ -33,5 +39,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": ["fridaycode", "agent", "core", "ai", "coding-agent", "sub-agents", "skills"]
 }

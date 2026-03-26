@@ -1,16 +1,22 @@
 {
   "name": "@fridaycode/tools",
   "version": "0.1.0",
+  "description": "Built-in tools for file operations, search, git, browser, and shell execution",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "dev": "tsup src/index.ts --format esm --dts --watch",
     "test": "vitest run",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@fridaycode/core": "workspace:*",
@@ -24,7 +30,7 @@
     "@types/node": "^22.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.1"
+    "vitest": "^2.0.0"
   },
   "author": "katipally",
   "license": "MIT",
@@ -35,5 +41,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": ["fridaycode", "tools", "file-operations", "git", "shell", "browser"]
 }

@@ -1,16 +1,22 @@
 {
   "name": "@fridaycode/tui",
   "version": "0.1.0",
+  "description": "Terminal UI components, themes, and keyboard shortcuts for FridayCode",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean --external react",
     "dev": "tsup src/index.ts --format esm --dts --watch --external react",
     "test": "vitest run",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@fridaycode/core": "workspace:*",
@@ -39,5 +45,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": ["fridaycode", "tui", "terminal-ui", "ink", "react", "themes", "components"]
 }
