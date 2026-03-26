@@ -16,43 +16,32 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
   mode,
   projectType,
 }) => {
-  return (
-    <Box flexDirection="column" paddingX={1} marginBottom={1}>
-      <Box gap={1}>
-        <Text color="green" bold>
-          {'\u2733'}
-        </Text>
-        <Text color="white" bold>
-          FridayCode
-        </Text>
-        <Text color="gray" dimColor>
-          v{version}
-        </Text>
-      </Box>
+  const modeStr = mode && mode !== 'code' ? ` (${mode} mode)` : '';
+  const projStr = projectType ? ` in ${projectType} project` : '';
 
-      <Box marginLeft={2} flexDirection="column">
+  return (
+    <Box flexDirection="column" marginBottom={1}>
+      <Text color="gray" dimColor>
+        {'\u2500'.repeat(60)}
+      </Text>
+      <Box paddingX={1} flexDirection="column">
         <Box gap={1}>
-          <Text color="gray">Model:</Text>
-          <Text color="cyan">{provider}/{model}</Text>
-          {mode && mode !== 'code' && (
-            <>
-              <Text color="gray">{'\u00B7'}</Text>
-              <Text color="magenta">{mode} mode</Text>
-            </>
-          )}
-          {projectType && (
-            <>
-              <Text color="gray">{'\u00B7'}</Text>
-              <Text color="yellow">{projectType}</Text>
-            </>
-          )}
-        </Box>
-        <Box gap={1}>
-          <Text color="gray" dimColor>
-            /help for commands {'\u00B7'} Ctrl+C to exit {'\u00B7'} Ctrl+L to clear
+          <Text color="cyan" bold>
+            {'\u2592'}
           </Text>
+          <Text bold>FridayCode</Text>
+          <Text dimColor>v{version}</Text>
         </Box>
+        <Text dimColor>
+          {'  '}{provider}/{model}{modeStr}{projStr}
+        </Text>
+        <Text dimColor>
+          {'  '}/help for commands, Ctrl-C to exit
+        </Text>
       </Box>
+      <Text color="gray" dimColor>
+        {'\u2500'.repeat(60)}
+      </Text>
     </Box>
   );
 };

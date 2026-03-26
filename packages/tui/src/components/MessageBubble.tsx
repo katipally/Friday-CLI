@@ -20,31 +20,15 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
       parts.push(text.slice(lastIndex, match.index));
     }
     if (match[2]) {
-      parts.push(
-        <Text key={`b${key++}`} bold>
-          {match[2]}
-        </Text>,
-      );
+      parts.push(<Text key={key++} bold>{match[2]}</Text>);
     } else if (match[4]) {
-      parts.push(
-        <Text key={`c${key++}`} color="cyan">
-          {match[4]}
-        </Text>,
-      );
+      parts.push(<Text key={key++} color="cyan">{match[4]}</Text>);
     } else if (match[6]) {
-      parts.push(
-        <Text key={`i${key++}`} dimColor>
-          {match[6]}
-        </Text>,
-      );
+      parts.push(<Text key={key++} dimColor>{match[6]}</Text>);
     }
     lastIndex = match.index + match[0].length;
   }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts.length > 0 ? parts : [text];
 }
 
@@ -57,52 +41,46 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
   while ((match = codeBlockRegex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      const segment = text.slice(lastIndex, match.index);
-      if (segment.trim()) {
-        elements.push(
-          <Text key={`t${key++}`} wrap="wrap">
-            {renderInlineMarkdown(segment)}
-          </Text>,
-        );
+      const segment = text.slice(lastIndex, match.index).trim();
+      if (segment) {
+        for (const line of segment.split('\n')) {
+          elements.push(
+            <Text key={`t${key++}`} wrap="wrap">{renderInlineMarkdown(line)}</Text>,
+          );
+        }
       }
     }
-
-    const lang = match[1];
+    const lang = match[1] || 'code';
     const code = match[2].trimEnd();
     elements.push(
-      <Box key={`cb${key++}`} flexDirection="column" marginY={0}>
-        <Text color="gray" dimColor>
-          {`\u2500\u2500 ${lang || 'code'} ${'─'.repeat(40)}`}
-        </Text>
-        <Box paddingLeft={1}>
-          <Text color="greenBright">{code}</Text>
-        </Box>
-        <Text color="gray" dimColor>
-          {'\u2500'.repeat(45)}
-        </Text>
+      <Box key={`cb${key++}`} flexDirection="column" marginLeft={2} marginY={0}>
+        <Text dimColor>{`\u2500\u2500 ${lang} ${'─'.repeat(Math.max(0, 50 - lang.length))}`}</Text>
+        {code.split('\n').map((line, i) => (
+          <Text key={i} color="green">{`  ${line}`}</Text>
+        ))}
+        <Text dimColor>{'\u2500'.repeat(54)}</Text>
       </Box>,
     );
-
     lastIndex = match.index + match[0].length;
   }
 
   if (lastIndex < text.length) {
-    const remaining = text.slice(lastIndex);
-    if (remaining.trim()) {
-      elements.push(
-        <Text key={`t${key++}`} wrap="wrap">
-          {renderInlineMarkdown(remaining)}
-        </Text>,
-      );
+    const remaining = text.slice(lastIndex).trim();
+    if (remaining) {
+      for (const line of remaining.split('\n')) {
+        elements.push(
+          <Text key={`t${key++}`} wrap="wrap">{renderInlineMarkdown(line)}</Text>,
+        );
+      }
     }
   }
 
-  if (elements.length === 0) {
-    elements.push(
-      <Text key="full" wrap="wrap">
-        {renderInlineMarkdown(text)}
-      </Text>,
-    );
+  if (elements.length === 0 && text.trim()) {
+    for (const line of text.split('\n')) {
+      elements.push(
+        <Text key={`t${key++}`} wrap="wrap">{renderInlineMarkdown(line)}</Text>,
+      );
+    }
   }
 
   return elements;
@@ -115,40 +93,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   if (!content && !isStreaming) return null;
 
+  // User message
   if (role === 'user') {
     return (
       <Box marginBottom={1}>
-        <Text color="cyan" bold wrap="wrap">
-          {content}
-        </Text>
+        <Text color="cyan" bold>{'\u276F '}</Text>
+        <Text bold wrap="wrap">{content}</Text>
       </Box>
     );
   }
 
+  // System message (slash command output, errors)
   if (role === 'system') {
     return (
-      <Box marginBottom={1} paddingLeft={1}>
-        <Text color="gray" wrap="wrap">
-          {content}
-        </Text>
+      <Box marginBottom={1} marginLeft={2}>
+        <Text dimColor wrap="wrap">{content}</Text>
       </Box>
     );
   }
 
-  // Assistant
+  // Assistant message
   return (
-    <Box flexDirection="column" marginBottom={1}>
+    <Box flexDirection="column" marginBottom={1} marginLeft={2}>
       {isStreaming && !content && (
-        <Text color="gray" dimColor>
-          {'\u25CF Thinking...'}
-        </Text>
+        <Text dimColor>Thinking...</Text>
       )}
-      <Box flexDirection="column">
-        {renderMarkdown(content)}
-        {isStreaming && content && (
-          <Text color="yellow">{' \u2588'}</Text>
-        )}
-      </Box>
+      {content && renderMarkdown(content)}
+      {isStreaming && content && <Text color="yellow">{'\u2588'}</Text>}
     </Box>
   );
 };

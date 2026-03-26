@@ -270,8 +270,8 @@ export const App: React.FC<AppProps> = ({
         projectType={projectType}
       />
 
-      {/* Messages */}
-      <Box flexDirection="column" flexGrow={1} paddingX={1}>
+      {/* Message area */}
+      <Box flexDirection="column" flexGrow={1}>
         {messages.map((msg) =>
           msg.role === 'tool' ? (
             <ToolOutput
@@ -294,35 +294,33 @@ export const App: React.FC<AppProps> = ({
         {isProcessing && !currentStreamId && <Spinner label="Thinking..." />}
       </Box>
 
-      {/* Permission prompt */}
+      {/* Permission prompt (inline) */}
       {pendingPermission && (
         <PermissionPrompt
           toolName={pendingPermission.toolCall.name}
           args={pendingPermission.toolCall.arguments}
           reason={pendingPermission.reason}
-          onRespond={(choice) => {
-            pendingPermission.respond(choice);
-          }}
+          onRespond={(choice) => pendingPermission.respond(choice)}
         />
       )}
 
-      {/* Input */}
-      <InputBox
-        onSubmit={handleSubmit}
-        isDisabled={isProcessing}
-        commands={commands}
-      />
-
-      {/* Status Bar */}
-      <StatusBar
-        model={activeModel}
-        provider={activeProvider}
-        mode={activeMode}
-        cost={totalCost}
-        inputTokens={totalInputTokens}
-        outputTokens={totalOutputTokens}
-        isThinking={isProcessing}
-      />
+      {/* Input + Status */}
+      <Box flexDirection="column" marginTop={1}>
+        <InputBox
+          onSubmit={handleSubmit}
+          isDisabled={isProcessing}
+          commands={commands}
+        />
+        <StatusBar
+          model={activeModel}
+          provider={activeProvider}
+          mode={activeMode}
+          cost={totalCost}
+          inputTokens={totalInputTokens}
+          outputTokens={totalOutputTokens}
+          isThinking={isProcessing}
+        />
+      </Box>
     </Box>
   );
 };

@@ -11,9 +11,9 @@ interface StatusBarProps {
   isThinking?: boolean;
 }
 
-function formatTokens(n: number): string {
+function fmtTokens(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
   return String(n);
 }
 
@@ -26,19 +26,17 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   outputTokens = 0,
   isThinking = false,
 }) => {
-  const left = `${provider}/${model}${mode !== 'code' ? ' \u00B7 ' + mode : ''}`;
-  const tokens = `${formatTokens(inputTokens)}\u2191 ${formatTokens(outputTokens)}\u2193`;
-  const costStr = cost > 0 ? ` \u00B7 $${cost.toFixed(4)}` : '';
+  const parts: string[] = [`${provider}/${model}`];
+  if (mode && mode !== 'code') parts.push(mode);
+  const right = `${fmtTokens(inputTokens)}\u2191 ${fmtTokens(outputTokens)}\u2193${cost > 0 ? ` $${cost.toFixed(4)}` : ''}`;
 
   return (
-    <Box paddingX={1} justifyContent="space-between" width="100%">
+    <Box justifyContent="space-between" width="100%">
       <Box gap={1}>
         {isThinking && <Text color="yellow">{'\u25CF'}</Text>}
-        <Text color="gray" dimColor>{left}</Text>
+        <Text dimColor>{parts.join(' \u00B7 ')}</Text>
       </Box>
-      <Text color="gray" dimColor>
-        {tokens}{costStr}
-      </Text>
+      <Text dimColor>{right}</Text>
     </Box>
   );
 };

@@ -16,52 +16,28 @@ export const PermissionPrompt: React.FC<PermissionPromptProps> = ({
 }) => {
   useInput((input) => {
     const key = input.toLowerCase();
-    if (key === 'y') {
-      onRespond('allow_once');
-    } else if (key === 'n') {
-      onRespond('deny');
-    } else if (key === 'a') {
-      onRespond('allow_always');
-    }
+    if (key === 'y') onRespond('allow_once');
+    else if (key === 'n') onRespond('deny');
+    else if (key === 'a') onRespond('allow_always');
   });
 
   const argsStr = JSON.stringify(args, null, 2);
-  const truncatedArgs =
-    argsStr.length > 200 ? argsStr.substring(0, 200) + '…' : argsStr;
+  const truncated = argsStr.length > 150 ? argsStr.slice(0, 150) + '\u2026' : argsStr;
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderColor="yellow"
-      paddingX={1}
-      marginY={1}
-    >
+    <Box flexDirection="column" marginLeft={2} marginY={1}>
       <Box gap={1}>
-        <Text color="yellow">🔒</Text>
-        <Text color="yellow" bold>
-          Permission Required
-        </Text>
+        <Text color="yellow" bold>{'\u26A0'}</Text>
+        <Text bold>{toolName}</Text>
+        <Text dimColor>{reason}</Text>
       </Box>
-      <Box marginLeft={3} flexDirection="column">
-        <Text>
-          <Text bold>{toolName}</Text>
-          <Text color="gray"> — {reason}</Text>
-        </Text>
-        <Text color="gray" dimColor>
-          {truncatedArgs}
-        </Text>
+      <Box marginLeft={4}>
+        <Text dimColor>{truncated}</Text>
       </Box>
-      <Box marginTop={1} marginLeft={3} gap={2}>
-        <Text color="green" bold>
-          [y]es
-        </Text>
-        <Text color="red" bold>
-          [n]o
-        </Text>
-        <Text color="cyan" bold>
-          [a]lways allow
-        </Text>
+      <Box marginLeft={4} gap={2}>
+        <Text color="green" bold>[y]es</Text>
+        <Text color="red" bold>[n]o</Text>
+        <Text color="cyan" bold>[a]lways</Text>
       </Box>
     </Box>
   );

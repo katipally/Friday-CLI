@@ -9,35 +9,16 @@ interface ToolOutputProps {
   isExecuting?: boolean;
 }
 
-const MAX_LINES = 30;
+const MAX_LINES = 20;
 
-function formatToolHeader(
-  toolName: string,
-  args: Record<string, unknown>,
-): string {
-  if (toolName === 'shell_exec' && args.command) {
-    return `$ ${String(args.command)}`;
-  }
-  if (
-    (toolName.startsWith('file_') || toolName === 'directory_tree') &&
-    (args.path || args.file_path)
-  ) {
+function formatHeader(toolName: string, args: Record<string, unknown>): string {
+  if (toolName === 'shell_exec' && args.command) return `$ ${String(args.command)}`;
+  if ((toolName.startsWith('file_') || toolName === 'directory_tree') && (args.path || args.file_path)) {
     return String(args.path ?? args.file_path);
   }
-  if ((toolName === 'grep' || toolName === 'glob') && args.pattern) {
-    return String(args.pattern);
-  }
-  const str = JSON.stringify(args);
-  return str.length > 60 ? str.substring(0, 60) + '\u2026' : str;
-}
-
-function truncateOutput(output: string): { text: string; truncated: number } {
-  const lines = output.split('\n');
-  if (lines.length <= MAX_LINES) return { text: output, truncated: 0 };
-  return {
-    text: lines.slice(0, MAX_LINES).join('\n'),
-    truncated: lines.length - MAX_LINES,
-  };
+  if ((toolName === 'grep' || toolName === 'glob') && args.pattern) return String(args.pattern);
+  const s = JSON.stringify(args);
+  return s.length > 50 ? s.slice(0, 50) + '\u2026' : s;
 }
 
 export const ToolOutput: React.FC<ToolOutputProps> = ({
@@ -47,50 +28,27 @@ export const ToolOutput: React.FC<ToolOutputProps> = ({
   success,
   isExecuting = false,
 }) => {
-  const statusIcon = isExecuting
-    ? '\u25B7'
-    : success === false
-      ? '\u2717'
-      : '\u25B6';
+  const icon = isExecuting ? '\u25CB' : success === false ? '\u2718' : '\u25CF';
+  const iconColor = isExecuting ? 'yellow' : success === false ? 'red' : 'green';
+  const header = args ? formatHeader(toolName, args) : '';
 
-  const statusColor = isExecuting
-    ? 'yellow'
-    : success === false
-      ? 'red'
-      : 'green';
-
-  const header = args ? formatToolHeader(toolName, args) : '';
+  const lines = output ? output.split('\n') : [];
+  const truncated = lines.length > MAX_LINES;
+  const displayLines = truncated ? lines.slice(0, MAX_LINES) : lines;
 
   return (
-    <Box flexDirection="column" marginLeft={1} marginBottom={0}>
+    <Box flexDirection="column" marginLeft={2} marginBottom={0}>
       <Box gap={1}>
-        <Text color={statusColor as 'yellow' | 'red' | 'green'}>{statusIcon}</Text>
-        <Text color="white" bold>
-          {toolName}
-        </Text>
-        {header && (
-          <Text color="gray" dimColor>
-            {header}
-          </Text>
-        )}
+        <Text color={iconColor as 'yellow' | 'red' | 'green'}>{icon}</Text>
+        <Text bold>{toolName}</Text>
+        {header && <Text dimColor>{header}</Text>}
       </Box>
       {output && (
-        <Box marginLeft={3} flexDirection="column">
-          {(() => {
-            const { text, truncated } = truncateOutput(output);
-            return (
-              <>
-                <Text color={success === false ? 'red' : 'gray'} dimColor wrap="wrap">
-                  {text}
-                </Text>
-                {truncated > 0 && (
-                  <Text color="gray" dimColor>
-                    [{truncated} more lines]
-                  </Text>
-                )}
-              </>
-            );
-          })()}
+        <Box marginLeft={4} flexDirection="column">
+          <Text color={success === false ? 'red' : undefined} dimColor={success !== false} wrap="wrap">
+            {displayLines.join('\n')}
+          </Text>
+          {truncated && <Text dimColor>[{lines.length - MAX_LINES} more lines]</Text>}
         </Box>
       )}
     </Box>
