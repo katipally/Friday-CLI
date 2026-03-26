@@ -61,6 +61,32 @@ export class CostTracker {
     this.budget = budget;
   }
 
+  /**
+   * Check if budget would be exceeded by an estimated cost.
+   * Call this BEFORE making an LLM call.
+   * @throws BudgetExceededError if budget would be exceeded
+   */
+  checkBudget(estimatedCost?: number): void {
+    if (this.budget === null) return;
+    const projected = this.totalCost + (estimatedCost ?? 0);
+    if (projected > this.budget) {
+      throw new BudgetExceededError(projected, this.budget);
+    }
+  }
+
+  /**
+   * Estimate cost for a request based on estimated token counts.
+   */
+  estimateCost(model: string, estimatedInputTokens: number, estimatedOutputTokens: number): number {
+    const pricing = this.getPricing(model);
+    return (estimatedInputTokens * pricing.input + estimatedOutputTokens * pricing.output) / 1_000_000;
+  }
+
+  getRemainingBudget(): number | null {
+    if (this.budget === null) return null;
+    return Math.max(0, this.budget - this.totalCost);
+  }
+
   track(model: string, provider: string, usage: TokenUsage): CostEntry {
     const pricing = this.getPricing(model);
     const cost =

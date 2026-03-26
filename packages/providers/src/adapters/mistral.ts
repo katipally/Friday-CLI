@@ -13,6 +13,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('mistral');
 
@@ -27,6 +28,7 @@ export class MistralProvider implements LLMProvider {
   readonly name = 'mistral';
   readonly displayName = 'Mistral AI';
   private client: Mistral;
+  private apiKey: string;
 
   constructor(config: ProviderConfig) {
     const apiKey = config.apiKey || process.env.MISTRAL_API_KEY;
@@ -36,6 +38,7 @@ export class MistralProvider implements LLMProvider {
         'mistral',
       );
     }
+    this.apiKey = apiKey;
     this.client = new Mistral({ apiKey });
   }
 
@@ -195,6 +198,40 @@ export class MistralProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('mistral');
+    if (cached) return cached;
+
+    try {
+      const response = await fetch('https://api.mistral.ai/v1/models', {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { data: Array<{ id: string; object: string }> };
+        const models: ModelInfo[] = data.data.map((m) => {
+          const fallback = MISTRAL_MODELS.find((f) => m.id.startsWith(f.id));
+          return {
+            id: m.id,
+            name: fallback?.name || m.id,
+            contextWindow: fallback?.contextWindow ?? 128000,
+            inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+            outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+            supportsVision: fallback?.supportsVision ?? false,
+            supportsToolCalling: fallback?.supportsToolCalling ?? true,
+          };
+        });
+
+        if (models.length > 0) {
+          setCachedModels('mistral', models);
+          return models;
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from Mistral API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return MISTRAL_MODELS;
   }
 

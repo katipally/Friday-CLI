@@ -13,6 +13,7 @@ import type {
   ToolDefinition,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('cohere');
 
@@ -28,6 +29,7 @@ export class CohereProvider implements LLMProvider {
   readonly name = 'cohere';
   readonly displayName = 'Cohere';
   private client: CohereClient;
+  private apiKey: string;
 
   constructor(config: ProviderConfig) {
     const apiKey = config.apiKey || process.env.COHERE_API_KEY;
@@ -37,6 +39,7 @@ export class CohereProvider implements LLMProvider {
         'cohere',
       );
     }
+    this.apiKey = apiKey;
     this.client = new CohereClient({ token: apiKey });
   }
 
@@ -205,6 +208,42 @@ export class CohereProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('cohere');
+    if (cached) return cached;
+
+    try {
+      const response = await fetch('https://api.cohere.com/v2/models', {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { models: Array<{ name: string; endpoints: string[]; context_length?: number }> };
+        const models: ModelInfo[] = data.models
+          .filter((m) => m.endpoints?.includes('chat'))
+          .map((m) => {
+            const fallback = COHERE_MODELS.find((f) => m.name.startsWith(f.id));
+            return {
+              id: m.name,
+              name: fallback?.name || m.name,
+              contextWindow: m.context_length || fallback?.contextWindow || 128000,
+              inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+              outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+              supportsVision: fallback?.supportsVision ?? false,
+              supportsToolCalling: fallback?.supportsToolCalling ?? true,
+            };
+          });
+
+        if (models.length > 0) {
+          setCachedModels('cohere', models);
+          return models;
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from Cohere API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return COHERE_MODELS;
   }
 

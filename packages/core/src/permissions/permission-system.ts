@@ -250,8 +250,8 @@ export class PermissionSystem {
       return this.isInWorkspace(cwd) ? 'workspace' : 'global';
     }
 
-    // Default to workspace scope when we can't determine
-    return 'workspace';
+    // Default to global scope when we can't determine (restrictive by default)
+    return 'global';
   }
 
   /** Get the string value to match a rule's pattern against */

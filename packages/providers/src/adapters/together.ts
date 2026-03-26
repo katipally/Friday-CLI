@@ -11,6 +11,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('together');
 
@@ -200,6 +201,36 @@ export class TogetherProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('together');
+    if (cached) return cached;
+
+    try {
+      const response = await this.client.models.list();
+      const models: ModelInfo[] = [];
+
+      for await (const model of response) {
+        const fallback = TOGETHER_MODELS.find((m) => model.id === m.id);
+        models.push({
+          id: model.id,
+          name: fallback?.name || model.id,
+          contextWindow: fallback?.contextWindow ?? 131072,
+          inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+          outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+          supportsVision: fallback?.supportsVision ?? false,
+          supportsToolCalling: fallback?.supportsToolCalling ?? true,
+        });
+      }
+
+      if (models.length > 0) {
+        setCachedModels('together', models);
+        return models;
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from Together API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return TOGETHER_MODELS;
   }
 

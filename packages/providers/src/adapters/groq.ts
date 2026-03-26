@@ -12,6 +12,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('groq');
 
@@ -26,6 +27,7 @@ export class GroqProvider implements LLMProvider {
   readonly name = 'groq';
   readonly displayName = 'Groq';
   private client: Groq;
+  private apiKey: string;
 
   constructor(config: ProviderConfig) {
     const apiKey = config.apiKey || process.env.GROQ_API_KEY;
@@ -35,6 +37,7 @@ export class GroqProvider implements LLMProvider {
         'groq',
       );
     }
+    this.apiKey = apiKey;
     this.client = new Groq({ apiKey });
   }
 
@@ -194,6 +197,40 @@ export class GroqProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('groq');
+    if (cached) return cached;
+
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { data: Array<{ id: string; object: string; context_window?: number }> };
+        const models: ModelInfo[] = data.data.map((m) => {
+          const fallback = GROQ_MODELS.find((f) => m.id.startsWith(f.id));
+          return {
+            id: m.id,
+            name: fallback?.name || m.id,
+            contextWindow: m.context_window || fallback?.contextWindow || 128000,
+            inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+            outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+            supportsVision: fallback?.supportsVision ?? false,
+            supportsToolCalling: fallback?.supportsToolCalling ?? true,
+          };
+        });
+
+        if (models.length > 0) {
+          setCachedModels('groq', models);
+          return models;
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from Groq API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return GROQ_MODELS;
   }
 

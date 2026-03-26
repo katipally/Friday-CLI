@@ -10,7 +10,14 @@ export {
   globTool,
   directoryTreeTool,
   gitTool,
+  gitCommitTool,
+  gitStashTool,
+  gitCheckoutTool,
+  gitStatusTool,
   askUserTool,
+  webFetchTool,
+  notebookEditTool,
+  browserTool,
 } from './built-in/index.js';
 
 import type { ToolContext } from './types.js';
@@ -24,7 +31,14 @@ import {
   globTool,
   directoryTreeTool,
   gitTool,
+  gitCommitTool,
+  gitStashTool,
+  gitCheckoutTool,
+  gitStatusTool,
   askUserTool,
+  webFetchTool,
+  notebookEditTool,
+  browserTool,
 } from './built-in/index.js';
 
 export function createDefaultRegistry(context: ToolContext): ToolRegistry {
@@ -38,7 +52,14 @@ export function createDefaultRegistry(context: ToolContext): ToolRegistry {
   registry.register(globTool);
   registry.register(directoryTreeTool);
   registry.register(gitTool);
+  registry.register(gitCommitTool);
+  registry.register(gitStashTool);
+  registry.register(gitCheckoutTool);
+  registry.register(gitStatusTool);
   registry.register(askUserTool);
+  registry.register(webFetchTool);
+  registry.register(notebookEditTool);
+  registry.register(browserTool);
 
   return registry;
 }

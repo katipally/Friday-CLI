@@ -11,6 +11,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('openai');
 
@@ -191,6 +192,38 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('openai');
+    if (cached) return cached;
+
+    try {
+      const response = await this.client.models.list();
+      const models: ModelInfo[] = [];
+
+      for await (const model of response) {
+        if (model.id.startsWith('gpt-') || model.id.startsWith('o1') || model.id.startsWith('o3') || model.id.startsWith('o4')) {
+          const fallback = OPENAI_MODELS.find((m) => model.id.startsWith(m.id));
+          models.push({
+            id: model.id,
+            name: model.id,
+            contextWindow: fallback?.contextWindow ?? 128000,
+            inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+            outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+            supportsVision: fallback?.supportsVision ?? model.id.includes('gpt-4'),
+            supportsToolCalling: true,
+          });
+        }
+      }
+
+      if (models.length > 0) {
+        setCachedModels('openai', models);
+        return models;
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from OpenAI API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return OPENAI_MODELS;
   }
 

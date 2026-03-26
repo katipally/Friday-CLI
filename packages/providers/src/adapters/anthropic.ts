@@ -11,6 +11,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('anthropic');
 
@@ -191,6 +192,45 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('anthropic');
+    if (cached) return cached;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/models', {
+        headers: {
+          'x-api-key': this.client.apiKey ?? process.env.ANTHROPIC_API_KEY ?? '',
+          'anthropic-version': '2023-06-01',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { data: Array<{ id: string; display_name: string; type: string }> };
+        const models: ModelInfo[] = data.data
+          .filter((m) => m.type === 'model')
+          .map((m) => {
+            const fallback = ANTHROPIC_MODELS.find((f) => m.id.startsWith(f.id));
+            return {
+              id: m.id,
+              name: m.display_name || m.id,
+              contextWindow: fallback?.contextWindow ?? 200000,
+              inputPricePerMToken: fallback?.inputPricePerMToken ?? 3.00,
+              outputPricePerMToken: fallback?.outputPricePerMToken ?? 15.00,
+              supportsVision: fallback?.supportsVision ?? true,
+              supportsToolCalling: fallback?.supportsToolCalling ?? true,
+            };
+          });
+
+        if (models.length > 0) {
+          setCachedModels('anthropic', models);
+          return models;
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from Anthropic API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return ANTHROPIC_MODELS;
   }
 

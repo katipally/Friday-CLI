@@ -30,10 +30,9 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "sh -c 'ESLINT_USE_FLAT_CONFIG=false eslint --fix \"$@\"' --"
     ],
-    "*.{json,md,yml,yaml}": [
+    "*.{json,md,yaml,yml}": [
       "prettier --write"
     ]
   },

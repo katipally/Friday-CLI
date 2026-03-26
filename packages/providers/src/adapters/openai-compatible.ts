@@ -11,26 +11,43 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('openai-compatible');
 
-export class OpenAICompatibleProvider implements LLMProvider {
-  readonly name = 'openai-compatible';
-  readonly displayName = 'OpenAI Compatible';
-  private client: OpenAI;
-  private baseUrl: string;
+export interface OpenAICompatibleOptions {
+  /** Display name for this provider */
+  name: string;
+  /** API key (some local providers don't require one) */
+  apiKey: string;
+  /** Base URL of the OpenAI-compatible API (e.g., "http://localhost:11434/v1") */
+  baseURL: string;
+  /** Default model to use when none is specified in a request */
+  defaultModel?: string;
+  /** Extra headers to send with every request */
+  headers?: Record<string, string>;
+}
 
-  constructor(config: ProviderConfig) {
-    if (!config.baseUrl) {
+export class OpenAICompatibleProvider implements LLMProvider {
+  readonly name: string;
+  readonly displayName: string;
+  private client: OpenAI;
+  private defaultModel: string;
+
+  constructor(options: OpenAICompatibleOptions) {
+    if (!options.baseURL) {
       throw new ProviderError(
-        'baseUrl is required for openai-compatible provider. Set it to your API endpoint (e.g., http://localhost:1234/v1).',
-        'openai-compatible',
+        'baseURL is required for OpenAI-compatible provider. Set it to your API endpoint (e.g., http://localhost:1234/v1).',
+        options.name || 'openai-compatible',
       );
     }
-    this.baseUrl = config.baseUrl;
+    this.name = options.name;
+    this.displayName = options.name;
+    this.defaultModel = options.defaultModel || 'default';
     this.client = new OpenAI({
-      apiKey: config.apiKey || process.env.OPENAI_COMPATIBLE_API_KEY || 'not-needed',
-      baseURL: config.baseUrl,
+      apiKey: options.apiKey || 'not-needed',
+      baseURL: options.baseURL,
+      defaultHeaders: options.headers,
     });
   }
 
@@ -38,7 +55,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     try {
       const messages = this.formatMessages(request);
       const response = await this.client.chat.completions.create({
-        model: request.model || 'default',
+        model: request.model || this.defaultModel,
         messages,
         temperature: request.temperature,
         max_tokens: request.maxTokens,
@@ -74,7 +91,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     try {
       const messages = this.formatMessages(request);
       const stream = await this.client.chat.completions.create({
-        model: request.model || 'default',
+        model: request.model || this.defaultModel,
         messages,
         temperature: request.temperature,
         max_tokens: request.maxTokens,
@@ -112,7 +129,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     try {
       const messages = this.formatMessages(request);
       const stream = await this.client.chat.completions.create({
-        model: request.model || 'default',
+        model: request.model || this.defaultModel,
         messages,
         temperature: request.temperature,
         max_tokens: request.maxTokens,
@@ -190,6 +207,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels(this.name);
+    if (cached) return cached;
+
     try {
       const response = await this.client.models.list();
       const models: ModelInfo[] = [];
@@ -204,9 +224,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
           supportsToolCalling: false,
         });
       }
+      if (models.length > 0) {
+        setCachedModels(this.name, models);
+      }
       return models;
     } catch {
-      logger.debug('Failed to fetch models from OpenAI-compatible endpoint, returning empty list');
+      logger.debug(`Failed to fetch models from ${this.name} endpoint, returning empty list`);
       return [];
     }
   }
@@ -268,13 +291,18 @@ export class OpenAICompatibleProvider implements LLMProvider {
     if (error instanceof OpenAI.APIError) {
       return new ProviderError(
         error.message,
-        'openai-compatible',
+        this.name,
         error.status,
         { type: error.type },
       );
     }
-    return new ProviderError((error as Error).message, 'openai-compatible');
+    return new ProviderError((error as Error).message, this.name);
   }
 }
 
-registerProvider('openai-compatible', (config) => new OpenAICompatibleProvider(config));
+registerProvider('openai-compatible', (config) => new OpenAICompatibleProvider({
+  name: 'openai-compatible',
+  apiKey: config.apiKey || process.env.OPENAI_COMPATIBLE_API_KEY || 'not-needed',
+  baseURL: config.baseUrl || '',
+  defaultModel: config.model,
+}));

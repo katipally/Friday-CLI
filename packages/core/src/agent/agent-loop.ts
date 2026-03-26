@@ -5,12 +5,14 @@ import type { AgentState, AgentConfig, AgentEvent, AgentToolRegistry } from './a
 import { getModeSystemPrompt } from './modes/index.js';
 import { PermissionSystem } from '../permissions/index.js';
 import { CostTracker } from '../cost/tracker.js';
+import { ContextManager } from '../context/context-manager.js';
 
 const logger = createLogger('agent-loop');
 
 export interface AgentLoopOptions {
   permissionSystem?: PermissionSystem;
   costTracker?: CostTracker;
+  contextManager?: ContextManager;
 }
 
 export class AgentLoop {
@@ -22,6 +24,7 @@ export class AgentLoop {
   private toolRegistry: AgentToolRegistry | null;
   private permissionSystem: PermissionSystem | null;
   private costTracker: CostTracker | null;
+  private contextManager: ContextManager | null;
 
   constructor(
     provider: LLMProvider,
@@ -34,6 +37,7 @@ export class AgentLoop {
     this.toolRegistry = toolRegistry;
     this.permissionSystem = options?.permissionSystem ?? null;
     this.costTracker = options?.costTracker ?? null;
+    this.contextManager = options?.contextManager ?? null;
   }
 
   getState(): AgentState {
@@ -94,6 +98,17 @@ export class AgentLoop {
         const hasTools = tools && tools.length > 0;
 
         yield { type: 'iteration', current: this.iteration + 1, max: this.config.maxIterations };
+
+        // Pre-flight budget check
+        if (this.costTracker) {
+          try {
+            this.costTracker.checkBudget();
+          } catch (error) {
+            yield { type: 'error', error: error as Error };
+            yield this.setState('TERMINATED');
+            break;
+          }
+        }
 
         if (hasTools) {
           // Use streaming with tools
@@ -170,8 +185,9 @@ export class AgentLoop {
             // ACT: Execute tool calls
             yield this.setState('ACTING');
 
+            // Phase 1: Check permissions sequentially (requires user interaction)
+            const approvedCalls: typeof pendingToolCalls = [];
             for (const toolCall of pendingToolCalls) {
-              // Permission check before execution
               if (this.permissionSystem) {
                 const preCheck = this.permissionSystem.checkRulesOnly(
                   toolCall.name,
@@ -230,35 +246,49 @@ export class AgentLoop {
                   yield { type: 'permission_granted', toolCall };
                 }
               }
+              approvedCalls.push(toolCall);
+            }
 
+            // Phase 2: Execute approved tool calls in parallel
+            for (const toolCall of approvedCalls) {
               yield { type: 'tool_start', toolCall };
+            }
 
-              if (!this.toolRegistry?.hasTool(toolCall.name)) {
-                const result: ToolResult = {
-                  success: false,
-                  output: `Unknown tool: ${toolCall.name}`,
-                };
-                this.history.push({ role: 'tool', content: result.output, toolCallId: toolCall.id });
-                yield { type: 'tool_result', toolCall, result };
-                continue;
-              }
+            const results = await Promise.all(
+              approvedCalls.map(async (toolCall) => {
+                if (!this.toolRegistry?.hasTool(toolCall.name)) {
+                  return {
+                    toolCall,
+                    result: { success: false, output: `Unknown tool: ${toolCall.name}` } as ToolResult,
+                  };
+                }
+                try {
+                  const result = await this.toolRegistry.execute(toolCall.name, toolCall.arguments);
+                  return { toolCall, result };
+                } catch (error) {
+                  return {
+                    toolCall,
+                    result: { success: false, output: `Tool error: ${(error as Error).message}` } as ToolResult,
+                  };
+                }
+              }),
+            );
 
-              try {
-                const result = await this.toolRegistry.execute(toolCall.name, toolCall.arguments);
-                this.history.push({ role: 'tool', content: result.output, toolCallId: toolCall.id });
-                yield { type: 'tool_result', toolCall, result };
-              } catch (error) {
-                const result: ToolResult = {
-                  success: false,
-                  output: `Tool error: ${(error as Error).message}`,
-                };
-                this.history.push({ role: 'tool', content: result.output, toolCallId: toolCall.id });
-                yield { type: 'tool_result', toolCall, result };
-              }
+            for (const { toolCall, result } of results) {
+              this.history.push({ role: 'tool', content: result.output, toolCallId: toolCall.id });
+              yield { type: 'tool_result', toolCall, result };
             }
 
             // OBSERVE: Loop back to think
             yield this.setState('OBSERVING');
+
+            // Auto-summarize if context is getting large
+            if (this.contextManager?.shouldSummarize()) {
+              logger.info('Auto-summarizing context (threshold reached)');
+              const summary = await this.contextManager.summarize();
+              yield { type: 'context_summarized', summary };
+            }
+
             this.iteration++;
             yield this.setState('THINKING');
           } else {

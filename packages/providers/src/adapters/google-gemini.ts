@@ -11,6 +11,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('google-gemini');
 
@@ -24,6 +25,7 @@ export class GoogleGeminiProvider implements LLMProvider {
   readonly name = 'google-gemini';
   readonly displayName = 'Google Gemini';
   private client: GoogleGenAI;
+  private apiKey: string;
 
   constructor(config: ProviderConfig) {
     const apiKey = config.apiKey || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
@@ -33,6 +35,7 @@ export class GoogleGeminiProvider implements LLMProvider {
         'google-gemini',
       );
     }
+    this.apiKey = apiKey;
     this.client = new GoogleGenAI({ apiKey });
   }
 
@@ -180,6 +183,53 @@ export class GoogleGeminiProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('google-gemini');
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${this.apiKey}`,
+      );
+
+      if (response.ok) {
+        const data = await response.json() as {
+          models: Array<{
+            name: string;
+            displayName: string;
+            inputTokenLimit: number;
+            outputTokenLimit: number;
+            supportedGenerationMethods: string[];
+          }>;
+        };
+
+        const models: ModelInfo[] = data.models
+          .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+          .filter((m) => m.name.includes('gemini'))
+          .map((m) => {
+            const id = m.name.replace('models/', '');
+            const fallback = GEMINI_MODELS.find((f) => id.startsWith(f.id));
+            return {
+              id,
+              name: m.displayName || id,
+              contextWindow: m.inputTokenLimit || fallback?.contextWindow || 1000000,
+              inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+              outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+              supportsVision: fallback?.supportsVision ?? true,
+              supportsToolCalling: fallback?.supportsToolCalling ?? true,
+            };
+          });
+
+        if (models.length > 0) {
+          setCachedModels('google-gemini', models);
+          return models;
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch models from Google API, using defaults', {
+        error: (error as Error).message,
+      });
+    }
+
     return GEMINI_MODELS;
   }
 

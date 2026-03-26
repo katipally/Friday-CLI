@@ -268,10 +268,10 @@ describe('ask_user tool', () => {
 // ToolRegistry
 // ---------------------------------------------------------------------------
 describe('ToolRegistry', () => {
-  it('createDefaultRegistry registers all 9 tools', () => {
+  it('createDefaultRegistry registers all built-in tools', () => {
     const registry = createDefaultRegistry(ctx);
     const tools = registry.getRegisteredTools();
-    expect(tools).toHaveLength(9);
+    expect(tools).toHaveLength(16);
     expect(tools).toContain('file_read');
     expect(tools).toContain('file_write');
     expect(tools).toContain('file_edit');
@@ -280,13 +280,20 @@ describe('ToolRegistry', () => {
     expect(tools).toContain('glob');
     expect(tools).toContain('directory_tree');
     expect(tools).toContain('git');
+    expect(tools).toContain('git_commit');
+    expect(tools).toContain('git_stash');
+    expect(tools).toContain('git_checkout');
+    expect(tools).toContain('git_status');
     expect(tools).toContain('ask_user');
+    expect(tools).toContain('web_fetch');
+    expect(tools).toContain('browser');
+    expect(tools).toContain('notebook_edit');
   });
 
   it('getToolDefinitions returns proper schemas', () => {
     const registry = createDefaultRegistry(ctx);
     const defs = registry.getToolDefinitions();
-    expect(defs.length).toBe(9);
+    expect(defs.length).toBe(16);
     for (const def of defs) {
       expect(def).toHaveProperty('name');
       expect(def).toHaveProperty('description');
