@@ -1,10 +1,10 @@
-# Friday CLI
+# fridaycode
 # Open-source multi-provider AI coding agent for the terminal
 
 class FridayCli < Formula
   desc "Open-source multi-provider AI coding agent for the terminal"
-  homepage "https://github.com/anthropic-ai/friday-cli"
-  url "https://github.com/anthropic-ai/friday-cli/archive/refs/tags/v__VERSION__.tar.gz"
+  homepage "https://github.com/katipally/fridaycode"
+  url "https://github.com/katipally/fridaycode/archive/refs/tags/v__VERSION__.tar.gz"
   sha256 "__SHA256__"
   license "MIT"
 

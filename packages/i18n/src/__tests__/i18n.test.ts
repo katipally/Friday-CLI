@@ -20,7 +20,7 @@ describe('I18n', () => {
 
   describe('t() translation', () => {
     it('returns English translation for known key', () => {
-      expect(i18n.t('welcome.title')).toBe('Friday CLI');
+      expect(i18n.t('welcome.title')).toBe('fridaycode');
     });
 
     it('returns subtitle translation', () => {
@@ -48,7 +48,7 @@ describe('I18n', () => {
 
     it('leaves unreferenced params untouched', () => {
       const result = i18n.t('welcome.title', { unused: 'val' });
-      expect(result).toBe('Friday CLI');
+      expect(result).toBe('fridaycode');
     });
 
     it('returns key with params for unknown key', () => {
@@ -59,7 +59,7 @@ describe('I18n', () => {
 
   describe('register()', () => {
     it('adds new locale', () => {
-      i18n.register('es', { 'welcome.title': 'Friday CLI (ES)' });
+      i18n.register('es', { 'welcome.title': 'fridaycode (ES)' });
       expect(i18n.listLocales()).toContain('es');
     });
 
@@ -67,12 +67,12 @@ describe('I18n', () => {
       i18n.register('en', { 'custom.key': 'Custom value' });
       expect(i18n.t('custom.key')).toBe('Custom value');
       // Original translations still work
-      expect(i18n.t('welcome.title')).toBe('Friday CLI');
+      expect(i18n.t('welcome.title')).toBe('fridaycode');
     });
 
     it('allows registering multiple locales', () => {
-      i18n.register('es', { 'welcome.title': 'Friday CLI (ES)' });
-      i18n.register('fr', { 'welcome.title': 'Friday CLI (FR)' });
+      i18n.register('es', { 'welcome.title': 'fridaycode (ES)' });
+      i18n.register('fr', { 'welcome.title': 'fridaycode (FR)' });
       const locales = i18n.listLocales();
       expect(locales).toContain('en');
       expect(locales).toContain('es');
@@ -110,7 +110,7 @@ describe('I18n', () => {
     });
 
     it('includes newly registered locales', () => {
-      i18n.register('de', { 'welcome.title': 'Friday CLI (DE)' });
+      i18n.register('de', { 'welcome.title': 'fridaycode (DE)' });
       expect(i18n.listLocales()).toContain('de');
     });
   });
@@ -123,7 +123,7 @@ describe('I18n', () => {
 
     it('still registers en translations when custom locale used', () => {
       const custom = new I18n('en');
-      expect(custom.t('welcome.title')).toBe('Friday CLI');
+      expect(custom.t('welcome.title')).toBe('fridaycode');
     });
   });
 });

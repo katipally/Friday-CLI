@@ -1,6 +1,6 @@
-# Contributing to Friday CLI
+# Contributing to fridaycode
 
-Thank you for your interest in contributing to Friday CLI! This guide will help you get started.
+Thank you for your interest in contributing to fridaycode! This guide will help you get started.
 
 ## Development Setup
 
@@ -14,8 +14,8 @@ Thank you for your interest in contributing to Friday CLI! This guide will help 
 
 ```bash
 # Clone the repo
-git clone https://github.com/katipally/Friday-CLI.git
-cd Friday-CLI
+git clone https://github.com/katipally/fridaycode.git
+cd fridaycode
 
 # Install dependencies
 pnpm install

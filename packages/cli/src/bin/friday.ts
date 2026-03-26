@@ -37,7 +37,7 @@ const program = new Command();
 
 program
   .name('friday')
-  .description('Friday CLI — Open-source multi-provider AI coding agent')
+  .description('fridaycode — Open-source multi-provider AI coding agent')
   .version(VERSION)
   .option('-m, --model <model>', 'LLM model to use')
   .option('-p, --provider <provider>', 'LLM provider (openai, anthropic, ollama, etc.)')

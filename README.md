@@ -1,10 +1,11 @@
-# 🤖 Friday CLI
+# 🤖 fridaycode
 
 **Open-source multi-provider AI coding agent for the terminal.**
 
-Friday CLI is a powerful terminal-based AI assistant that supports 15+ LLM providers, features a beautiful React-based terminal UI, and includes a full ReAct agent loop with tool calling, sub-agent delegation, and MCP plugin support.
+fridaycode is a powerful terminal-based AI assistant that supports 12+ LLM providers, features a beautiful React-based terminal UI, and includes a full ReAct agent loop with tool calling, sub-agent delegation, and MCP plugin support.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm version](https://img.shields.io/npm/v/fridaycode.svg)](https://www.npmjs.com/package/fridaycode)
 
 ---
 
@@ -87,11 +88,11 @@ echo "Fix the auth bug" | friday --no-interactive
 | `/init` | Create FRIDAY.md for current project |
 | `/tools` | List available tools |
 | `/mcp add <server>` | Add MCP server |
-| `/exit` | Exit Friday CLI |
+| `/exit` | Exit fridaycode |
 
 ## 🔧 Configuration
 
-Friday CLI uses a layered configuration system:
+fridaycode uses a layered configuration system:
 
 1. **CLI flags** (highest precedence)
 2. **Environment variables** (`FRIDAY_*`, `OPENAI_API_KEY`, etc.)
@@ -152,8 +153,8 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ```bash
 # Clone and setup
-git clone https://github.com/katipally/Friday-CLI.git
-cd Friday-CLI
+git clone https://github.com/katipally/fridaycode.git
+cd fridaycode
 pnpm install
 pnpm build
 

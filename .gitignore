@@ -28,7 +28,7 @@ coverage/
 # Turbo
 .turbo/
 
-# Friday CLI config (user-specific)
+# fridaycode config (user-specific)
 .friday/
 
 # Logs

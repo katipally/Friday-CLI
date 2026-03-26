@@ -1,4 +1,4 @@
-# Friday CLI — Architecture Deep Dive
+# fridaycode — Architecture Deep Dive
 
 ## Table of Contents
 1. [System Architecture](#system-architecture)
@@ -14,7 +14,7 @@
 
 ## System Architecture
 
-Friday CLI follows a **layered architecture** with three main tiers:
+fridaycode follows a **layered architecture** with three main tiers:
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -254,7 +254,7 @@ Budget guard: If cost exceeds budget → pause and ask user
 ### MCP Integration Architecture
 
 ```
-Friday CLI (MCP Client)
+fridaycode (MCP Client)
     │
     ├── STDIO Transport ──► Local MCP Server (subprocess)
     │   (spawn process,      e.g., filesystem, database
@@ -353,7 +353,7 @@ CREATE TABLE codebase_facts (
 <App>
   ├── <ThemeProvider theme={currentTheme}>
   │   ├── <Header>
-  │   │   ├── <Logo /> (Friday CLI branding)
+  │   │   ├── <Logo /> (fridaycode branding)
   │   │   ├── <ModelIndicator /> (current model/provider)
   │   │   └── <ModeIndicator /> (current mode)
   │   │

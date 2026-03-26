@@ -27,7 +27,7 @@ export async function checkForUpdate(): Promise<VersionInfo> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const res = await fetch('https://registry.npmjs.org/friday-cli/latest', {
+    const res = await fetch('https://registry.npmjs.org/fridaycode/latest', {
       signal: controller.signal,
       headers: { Accept: 'application/json' },
     });

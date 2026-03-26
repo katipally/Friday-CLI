@@ -1,4 +1,4 @@
-# Friday CLI — Technology Stack & Dependencies
+# fridaycode — Technology Stack & Dependencies
 
 ## Core Stack
 

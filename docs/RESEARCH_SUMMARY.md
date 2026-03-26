@@ -1,4 +1,4 @@
-# Friday CLI — Research Summary
+# fridaycode — Research Summary
 
 ## Competitive Landscape Analysis
 

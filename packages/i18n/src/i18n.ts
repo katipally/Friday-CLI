@@ -1,7 +1,7 @@
 type Translations = Record<string, string>;
 
 const EN_TRANSLATIONS: Translations = {
-  'welcome.title': 'Friday CLI',
+  'welcome.title': 'fridaycode',
   'welcome.subtitle': 'AI-powered coding agent',
   'welcome.version': 'Version {version}',
   'prompt.input': 'You: ',

@@ -46,7 +46,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({
       </Box>
       <Box marginLeft={2} marginTop={0} gap={2}>
         <Text color="gray" dimColor>
-          Open-source AI coding agent • github.com/katipally/Friday-CLI
+          Open-source AI coding agent • github.com/katipally/fridaycode
         </Text>
         <Text color="gray">|</Text>
         <Text color="cyan">Type /help for commands</Text>

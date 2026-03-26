@@ -349,7 +349,7 @@ describe('/update command', () => {
     const ctx = mockContext();
     const result = await registry.execute('/update', ctx);
     expect(result).not.toBeNull();
-    expect(result!.output).toContain('Friday CLI v');
+    expect(result!.output).toContain('fridaycode v');
   });
 
   it('aliases /version works', async () => {

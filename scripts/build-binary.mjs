@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Build a standalone binary for Friday CLI using Node.js Single Executable Application (SEA).
+ * Build a standalone binary for fridaycode using Node.js Single Executable Application (SEA).
  * Requires Node.js >= 20.
  *
  * Usage: node scripts/build-binary.mjs
@@ -32,7 +32,7 @@ function ensureDir(dir) {
 }
 
 async function buildSEA() {
-  console.log('\n🔨 Building Friday CLI standalone binary\n');
+  console.log('\n🔨 Building fridaycode standalone binary\n');
 
   // Step 1: Build all packages
   console.log('1. Building packages...');

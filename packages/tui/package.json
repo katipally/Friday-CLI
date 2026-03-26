@@ -33,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/katipally/Friday-CLI.git",
+    "url": "https://github.com/katipally/fridaycode.git",
     "directory": "packages/tui"
   },
   "publishConfig": {

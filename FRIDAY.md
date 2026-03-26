@@ -1,4 +1,4 @@
-# Friday CLI Project Rules
+# fridaycode Project Rules
 
 ## Code Style
 - TypeScript strict mode everywhere

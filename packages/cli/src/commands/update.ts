@@ -19,7 +19,7 @@ async function getLocalVersion(): Promise<string> {
 
 async function getLatestVersion(): Promise<string | null> {
   try {
-    const response = await fetch('https://registry.npmjs.org/friday-cli/latest');
+    const response = await fetch('https://registry.npmjs.org/fridaycode/latest');
     if (!response.ok) {
       return null;
     }
@@ -50,7 +50,7 @@ export const updateCommand: SlashCommand = {
   async execute(_args: string[], _context: CommandContext): Promise<CommandResult> {
     const currentVersion = await getLocalVersion();
 
-    const lines = [`Friday CLI v${currentVersion}`];
+    const lines = [`fridaycode v${currentVersion}`];
 
     const latestVersion = await getLatestVersion();
 
@@ -61,7 +61,7 @@ export const updateCommand: SlashCommand = {
 
     if (currentVersion === 'unknown') {
       lines.push('', `Latest version: ${latestVersion}`);
-      lines.push('Run to update: npm install -g friday-cli@latest');
+      lines.push('Run to update: npm install -g fridaycode@latest');
       return { output: lines.join('\n'), type: 'info' };
     }
 
@@ -75,7 +75,7 @@ export const updateCommand: SlashCommand = {
         `Update available: ${currentVersion} → ${latestVersion}`,
         '',
         'Run to update:',
-        '  npm install -g friday-cli@latest',
+        '  npm install -g fridaycode@latest',
       );
     }
 

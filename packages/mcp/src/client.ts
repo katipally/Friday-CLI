@@ -56,7 +56,7 @@ export class MCPClient {
       // MCP initialize handshake
       const initResult = (await transport.send('initialize', {
         protocolVersion: '2024-11-05',
-        clientInfo: { name: 'friday-cli', version: '0.1.0' },
+        clientInfo: { name: 'fridaycode', version: '0.1.0' },
         capabilities: {},
       })) as {
         serverInfo?: { name?: string; version?: string };

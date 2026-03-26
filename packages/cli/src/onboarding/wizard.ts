@@ -50,7 +50,7 @@ export async function runOnboarding(): Promise<void> {
 
   try {
     console.log('\n╔══════════════════════════════════════════╗');
-    console.log('║     🌟 Welcome to Friday CLI! 🌟        ║');
+    console.log('║     🌟 Welcome to fridaycode! 🌟         ║');
     console.log('║   Open-source AI coding agent            ║');
     console.log('╚══════════════════════════════════════════╝\n');
 

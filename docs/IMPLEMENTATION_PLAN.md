@@ -1,7 +1,7 @@
-# Friday CLI — Complete Implementation Plan
+# fridaycode — Complete Implementation Plan
 
 ## Vision
-**Friday CLI** is an open-source, multi-provider AI coding agent for the terminal — a direct competitor to Claude Code, Gemini CLI, and GitHub Copilot CLI. It supports 15+ LLM providers, features a beautiful Ink-based TUI, a full ReAct agent loop with sub-agent delegation, MCP plugin support, and ships as npm package, Homebrew formula, and standalone binary.
+**fridaycode** is an open-source, multi-provider AI coding agent for the terminal — a direct competitor to Claude Code, Gemini CLI, and GitHub Copilot CLI. It supports 15+ LLM providers, features a beautiful Ink-based TUI, a full ReAct agent loop with sub-agent delegation, MCP plugin support, and ships as npm package, Homebrew formula, and standalone binary.
 
 **License:** MIT | **Language:** TypeScript | **Runtime:** Node.js | **TUI:** Ink (React for terminal)
 
@@ -11,7 +11,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     Friday CLI                          │
+│                     fridaycode                          │
 ├─────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
 │  │  TUI Layer   │  │  CLI Parser  │  │  SDK (@friday/ │  │
@@ -56,7 +56,7 @@
 ## Monorepo Structure
 
 ```
-friday-cli/
+fridaycode/
 ├── packages/
 │   ├── cli/                    # CLI entry point, commander setup
 │   │   ├── src/

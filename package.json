@@ -46,10 +46,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/katipally/Friday-CLI.git"
+    "url": "https://github.com/katipally/fridaycode.git"
   },
-  "homepage": "https://github.com/katipally/Friday-CLI",
+  "homepage": "https://github.com/katipally/fridaycode",
   "bugs": {
-    "url": "https://github.com/katipally/Friday-CLI/issues"
+    "url": "https://github.com/katipally/fridaycode/issues"
   }
 }

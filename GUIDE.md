@@ -1,6 +1,6 @@
-# 📖 Friday CLI — Complete Guide
+# 📖 fridaycode — Complete Guide
 
-> From installation to publishing — everything you need to know about using, configuring, extending, and distributing Friday CLI.
+> From installation to publishing — everything you need to know about using, configuring, extending, and distributing fridaycode.
 
 ---
 
@@ -46,9 +46,14 @@
   - [Adding a New Tool](#adding-a-new-tool)
   - [Adding a Slash Command](#adding-a-slash-command)
 - [📦 Publishing & Distribution](#-publishing--distribution)
-  - [Publishing to npm](#publishing-to-npm)
-  - [Building a Standalone Binary](#building-a-standalone-binary)
+  - [Creating an npm Account](#creating-an-npm-account)
+  - [Publishing to npm (Step by Step)](#publishing-to-npm-step-by-step)
+  - [Version Management](#version-management)
+  - [Testing Your Published Package](#testing-your-published-package)
+  - [Updating to a New Version](#updating-to-a-new-version)
+  - [CI/CD Automated Publishing](#cicd-automated-publishing)
   - [Homebrew Formula](#homebrew-formula)
+  - [Building a Standalone Binary](#building-a-standalone-binary)
 - [❓ Troubleshooting](#-troubleshooting)
 - [🗺️ Roadmap](#️-roadmap)
 
@@ -58,8 +63,8 @@
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/katipally/Friday-CLI.git
-cd Friday-CLI
+git clone https://github.com/katipally/fridaycode.git
+cd fridaycode
 
 # 2. Install dependencies
 pnpm install
@@ -67,7 +72,7 @@ pnpm install
 # 3. Build all packages
 pnpm run build
 
-# 4. Run Friday with Ollama (free, local)
+# 4. Run fridaycode with Ollama (free, local)
 node packages/cli/dist/bin/friday.js -p ollama -m "qwen3:thinking"
 
 # Or pipe a question directly:
@@ -88,8 +93,8 @@ That's it. You're chatting with an AI coding agent in your terminal.
 
 ```bash
 # Clone
-git clone https://github.com/katipally/Friday-CLI.git
-cd Friday-CLI
+git clone https://github.com/katipally/fridaycode.git
+cd fridaycode
 
 # Install all workspace dependencies
 pnpm install
@@ -210,7 +215,7 @@ friday --non-interactive -p ollama -m qwen3:thinking <<< "Explain package.json"
 
 ## 🤖 Providers — Connecting to AI Models
 
-Friday supports **12 providers** out of the box. Each provider self-registers — just set the API key and go.
+fridaycode supports **12 providers** out of the box. Each provider self-registers — just set the API key and go.
 
 ### Provider Setup Table
 
@@ -246,7 +251,7 @@ ollama pull qwen3:thinking      # Thinking model (recommended)
 ollama pull llama3.1             # Meta's Llama 3.1
 ollama pull codellama            # Code-specialized
 
-# 4. Run Friday
+# 4. Run fridaycode
 friday -p ollama -m qwen3:thinking
 ```
 
@@ -256,7 +261,7 @@ export OLLAMA_HOST="http://192.168.1.100:11434"
 friday -p ollama -m llama3.1
 ```
 
-> **Note:** Ollama models don't support tool calling (function calling). Friday will run in chat-only mode — it responds conversationally but won't execute tools like file_read or shell_exec. For full agent capabilities with tools, use OpenAI, Anthropic, or Gemini.
+> **Note:** Ollama models don't support tool calling (function calling). fridaycode will run in chat-only mode — it responds conversationally but won't execute tools like file_read or shell_exec. For full agent capabilities with tools, use OpenAI, Anthropic, or Gemini.
 
 ### Using OpenAI
 
@@ -387,7 +392,7 @@ Type `/` followed by a command name in the input box:
 | `/mcp [action]` | `/plugins` | Manage MCP servers (list, status, reload) |
 | `/init` | `/setup` | Create FRIDAY.md project rules file |
 | `/update` | `/version` | Check for updates / show version |
-| `/exit` | `/quit`, `/q` | Exit Friday |
+| `/exit` | `/quit`, `/q` | Exit fridaycode |
 
 **Examples:**
 ```
@@ -402,7 +407,7 @@ Type `/` followed by a command name in the input box:
 
 ## 🔐 Permissions System
 
-Friday uses a layered permission system to keep you safe:
+fridaycode uses a layered permission system to keep you safe:
 
 | Action | Default | What Happens |
 |--------|---------|--------------|
@@ -441,7 +446,7 @@ Press `y` to allow once, `n` to deny, or `a` to always allow that pattern.
 
 ### Config File Locations
 
-Friday loads config from multiple sources (highest priority first):
+fridaycode loads config from multiple sources (highest priority first):
 
 1. **CLI flags** — `friday -p openai -m gpt-4o`
 2. **Environment variables** — `FRIDAY_PROVIDER=openai`
@@ -624,7 +629,7 @@ You can also put multiple rule files in `.friday/rules/*.md` — they'll all be 
 
 ## 💾 Sessions
 
-Friday automatically saves your conversation to disk so you can resume later.
+fridaycode automatically saves your conversation to disk so you can resume later.
 
 **Session storage:** `~/.friday/sessions/`
 
@@ -656,7 +661,7 @@ Sessions auto-save on exit (Ctrl+C or `/exit`). Old sessions are cleaned up afte
 
 ## 💰 Cost Tracking
 
-Friday tracks token usage and estimated costs in real-time.
+fridaycode tracks token usage and estimated costs in real-time.
 
 **View current session costs:**
 ```
@@ -690,7 +695,7 @@ The status bar at the bottom of the TUI shows live cost: `📊 12500↑ 3200↓ 
 
 ## 🔌 MCP — Model Context Protocol
 
-MCP lets you connect external tool servers to Friday. Any MCP-compatible server adds its tools to the agent automatically.
+MCP lets you connect external tool servers to fridaycode. Any MCP-compatible server adds its tools to the agent automatically.
 
 **Configure in `~/.friday/config.json`:**
 
@@ -737,7 +742,7 @@ MCP tools appear alongside built-in tools and are available to the agent automat
 
 ## 📚 SDK — Programmatic Usage
 
-Use Friday as a library in your own Node.js/TypeScript applications:
+Use fridaycode as a library in your own Node.js/TypeScript applications:
 
 ```bash
 npm install @fridaycode/sdk
@@ -845,7 +850,7 @@ for await (const event of friday.chat('Fix the bug in app.ts')) {
 ### Monorepo Structure
 
 ```
-Friday-CLI/
+fridaycode/
 ├── packages/
 │   ├── cli/        # CLI entry point, commands, config, onboarding
 │   ├── core/       # Agent loop, permissions, sessions, cost tracker
@@ -1077,32 +1082,342 @@ registry.register(myCommand);
 
 ## 📦 Publishing & Distribution
 
-### Publishing to npm
+This section walks you through everything — from creating an npm account to publishing, versioning, and testing installs.
 
-The package scope is already configured as `@fridaycode/` for all internal packages, and the main CLI publishes as `fridaycode` on npm.
+### Creating an npm Account
 
-1. **Login to npm:**
+If you don't already have an npm account:
+
+1. **Go to** [https://www.npmjs.com/signup](https://www.npmjs.com/signup)
+2. **Fill in** username, email, password
+3. **Verify** your email (check inbox)
+4. **Enable 2FA** (strongly recommended — npm requires it for publishing scoped packages):
+   - Go to [https://www.npmjs.com/settings/~/tfa](https://www.npmjs.com/settings/~/tfa)
+   - Choose "Authorization and Publishing" for maximum security
+   - Scan the QR code with an authenticator app (Google Authenticator, 1Password, etc.)
+
+5. **Login from terminal:**
    ```bash
    npm login
-   # For scoped packages:
-   npm login --scope=@fridaycode
+   # Enter your username, password, email, and 2FA code when prompted
+   # Verify you're logged in:
+   npm whoami
+   # → katipally
    ```
 
-2. **Build and publish:**
+6. **Create the npm organization** (for scoped `@fridaycode/` packages):
+   - Go to [https://www.npmjs.com/org/create](https://www.npmjs.com/org/create)
+   - Organization name: `fridaycode`
+   - Choose **Free** (unlimited public packages)
+   - This lets you publish `@fridaycode/core`, `@fridaycode/shared`, etc.
+
+### Publishing to npm (Step by Step)
+
+#### First-Time Publish
+
+```bash
+# 1. Make sure everything builds and tests pass
+pnpm run build
+pnpm run test
+
+# 2. Login to npm (if not already)
+npm login
+
+# 3. Dry-run first to see what will be published
+cd packages/cli
+npm pack --dry-run
+# Review the file list — make sure no secrets, test files, or junk are included
+
+# 4. Publish all packages (from repo root)
+cd ../..  # back to repo root
+pnpm -r publish --access public --no-git-checks
+
+# This publishes in dependency order:
+#   @fridaycode/shared → @fridaycode/providers → @fridaycode/core →
+#   @fridaycode/tools → @fridaycode/mcp → @fridaycode/tui →
+#   @fridaycode/i18n → @fridaycode/indexer → @fridaycode/sdk →
+#   fridaycode (the main CLI)
+```
+
+#### What Gets Published
+
+| Package | npm Name | What It Is |
+|---------|----------|------------|
+| `packages/cli` | `fridaycode` | Main CLI — what users install |
+| `packages/shared` | `@fridaycode/shared` | Shared types, logger, utilities |
+| `packages/core` | `@fridaycode/core` | Agent loop, permissions, sessions |
+| `packages/providers` | `@fridaycode/providers` | 12 LLM provider adapters |
+| `packages/tools` | `@fridaycode/tools` | 9 built-in tools |
+| `packages/tui` | `@fridaycode/tui` | Terminal UI components |
+| `packages/mcp` | `@fridaycode/mcp` | MCP client |
+| `packages/sdk` | `@fridaycode/sdk` | TypeScript SDK for programmatic use |
+| `packages/i18n` | `@fridaycode/i18n` | Internationalization |
+| `packages/indexer` | `@fridaycode/indexer` | Project detection |
+
+#### Verify It Worked
+
+```bash
+# Check the main package on npm
+npm view fridaycode
+
+# Check a scoped package
+npm view @fridaycode/core
+
+# Visit in browser
+# https://www.npmjs.com/package/fridaycode
+```
+
+### Version Management
+
+We use [Semantic Versioning](https://semver.org/) (semver): `MAJOR.MINOR.PATCH`
+
+- **PATCH** (0.1.0 → 0.1.1): Bug fixes, no API changes
+- **MINOR** (0.1.0 → 0.2.0): New features, backward compatible
+- **MAJOR** (0.1.0 → 1.0.0): Breaking changes
+
+#### Bumping Versions
+
+```bash
+# Option 1: Manual bump — update version in each package.json
+# Edit packages/cli/package.json: "version": "0.2.0"
+# Edit packages/core/package.json: "version": "0.2.0"
+# ... repeat for all packages
+
+# Option 2: Use npm version (for a single package)
+cd packages/cli
+npm version patch   # 0.1.0 → 0.1.1
+npm version minor   # 0.1.0 → 0.2.0
+npm version major   # 0.1.0 → 1.0.0
+
+# Option 3 (Recommended): Use changesets for monorepo versioning
+# Install changesets:
+pnpm add -Dw @changesets/cli
+
+# Initialize:
+pnpm changeset init
+
+# Before each release, create a changeset:
+pnpm changeset
+# Follow prompts: select changed packages, bump type, description
+
+# Apply changesets (bumps versions + updates changelogs):
+pnpm changeset version
+
+# Then publish:
+pnpm -r publish --access public --no-git-checks
+```
+
+#### Keeping Versions in Sync
+
+All `@fridaycode/*` packages should have the same version number. When you bump one, bump them all:
+
+```bash
+# Quick way to bump all packages to the same version:
+NEW_VER="0.2.0"
+for pkg in packages/*/package.json; do
+  # Use node to update version field
+  node -e "
+    const fs = require('fs');
+    const p = JSON.parse(fs.readFileSync('$pkg', 'utf-8'));
+    p.version = '$NEW_VER';
+    fs.writeFileSync('$pkg', JSON.stringify(p, null, 2) + '\n');
+  "
+done
+echo "All packages bumped to $NEW_VER"
+```
+
+### Testing Your Published Package
+
+After publishing, test every install method:
+
+#### Test 1: npm Global Install
+
+```bash
+# Install globally
+npm install -g fridaycode
+
+# Verify both binary names work
+friday --version    # → 0.1.0
+fridaycode --version  # → 0.1.0
+
+# Verify it runs
+friday --help
+
+# Test with Ollama
+friday -p ollama -m qwen3:thinking
+
+# Test non-interactive
+echo "What is 2+2?" | friday --non-interactive -p ollama -m qwen3:thinking
+```
+
+#### Test 2: npx (No Install)
+
+```bash
+# Run without installing
+npx fridaycode --version
+npx fridaycode -p ollama -m qwen3:thinking
+```
+
+#### Test 3: pnpm Global Install
+
+```bash
+pnpm add -g fridaycode
+friday --version
+```
+
+#### Test 4: Local Install (as a Dependency)
+
+```bash
+# Test the SDK in a new project
+mkdir test-sdk && cd test-sdk
+npm init -y
+npm install @fridaycode/sdk
+
+# Create test.mjs
+cat > test.mjs << 'EOF'
+import { FridaySDK } from '@fridaycode/sdk';
+const sdk = new FridaySDK({ provider: 'ollama', model: 'qwen3:thinking' });
+console.log('SDK loaded:', typeof sdk);
+EOF
+
+node test.mjs
+# → SDK loaded: object
+
+# Clean up
+cd .. && rm -rf test-sdk
+```
+
+#### Test 5: Install from Tarball (Pre-Publish Testing)
+
+```bash
+# Pack without publishing
+cd packages/cli
+npm pack
+# Creates fridaycode-0.1.0.tgz
+
+# Install from tarball
+npm install -g ./fridaycode-0.1.0.tgz
+
+# Test it
+friday --version
+
+# Uninstall and clean up
+npm uninstall -g fridaycode
+rm fridaycode-0.1.0.tgz
+```
+
+### Updating to a New Version
+
+#### As a Maintainer (Releasing a New Version)
+
+```bash
+# 1. Make your code changes
+# 2. Run tests
+pnpm run build && pnpm run test
+
+# 3. Bump version in all package.json files
+# (see "Bumping Versions" above)
+
+# 4. Commit the version bump
+git add -A
+git commit -m "chore: bump version to 0.2.0"
+
+# 5. Create a git tag
+git tag v0.2.0
+
+# 6. Push
+git push origin main --tags
+
+# 7. Publish to npm
+pnpm -r publish --access public --no-git-checks
+
+# 8. Create GitHub Release (optional but recommended)
+# Go to https://github.com/katipally/fridaycode/releases/new
+# Select tag v0.2.0, write release notes, publish
+```
+
+#### As a User (Updating to Latest)
+
+```bash
+# Check current version
+friday --version
+
+# Check for updates (built-in command)
+# Inside fridaycode, type:
+/update
+
+# Update via npm
+npm update -g fridaycode
+
+# Or force latest
+npm install -g fridaycode@latest
+
+# Verify
+friday --version
+```
+
+### CI/CD Automated Publishing
+
+A GitHub Actions workflow is included at `.github/workflows/publish.yml`. To set it up:
+
+1. **Generate an npm token:**
+   - Go to [https://www.npmjs.com/settings/~/tokens](https://www.npmjs.com/settings/~/tokens)
+   - Click "Generate New Token" → "Classic Token"
+   - Choose "Automation" type (bypasses 2FA for CI)
+   - Copy the token (starts with `npm_...`)
+
+2. **Add the token to GitHub:**
+   - Go to `https://github.com/katipally/fridaycode/settings/secrets/actions`
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: paste your npm token
+
+3. **Trigger publishing:**
+   - **Automatic:** Create a GitHub Release → publish workflow runs automatically
+   - **Manual:** Go to Actions → "Publish to npm" → "Run workflow" → choose dry-run or real publish
+
+4. **Workflow details:**
+   ```yaml
+   # .github/workflows/publish.yml triggers on:
+   # - GitHub Release published → full publish
+   # - Manual workflow_dispatch → dry-run or real publish
+   #
+   # Steps: checkout → install → build → test → publish
+   ```
+
+### Homebrew Formula
+
+For macOS users, create a Homebrew tap:
+
+1. **Create a GitHub repo:** `katipally/homebrew-tap`
+
+2. **Add formula** `Formula/fridaycode.rb`:
+   ```ruby
+   class Fridaycode < Formula
+     desc "Open-source multi-provider AI coding agent for the terminal"
+     homepage "https://github.com/katipally/fridaycode"
+     url "https://registry.npmjs.org/fridaycode/-/fridaycode-0.1.0.tgz"
+     sha256 "YOUR_SHA256_HASH"  # Get with: shasum -a 256 fridaycode-0.1.0.tgz
+     license "MIT"
+
+     depends_on "node@20"
+
+     def install
+       system "npm", "install", *std_npm_args
+       bin.install_symlink Dir["#{libexec}/bin/*"]
+     end
+
+     test do
+       assert_match "0.1.0", shell_output("#{bin}/friday --version")
+     end
+   end
+   ```
+
+3. **Users install with:**
    ```bash
-   pnpm run build
-   pnpm run test
-   # Publish all packages (respects workspace order):
-   pnpm -r publish --access public --no-git-checks
+   brew tap katipally/tap
+   brew install fridaycode
    ```
-
-3. **Users can then install:**
-   ```bash
-   npm install -g fridaycode
-   friday --version
-   ```
-
-4. **CI/CD Publishing** — A GitHub Actions workflow (`.github/workflows/publish.yml`) is included. Add an `NPM_TOKEN` secret to your repo, then create a GitHub Release to trigger automatic publishing.
 
 ### Building a Standalone Binary
 
@@ -1117,40 +1432,6 @@ node scripts/build-binary.mjs
 ```
 
 The binary can be distributed directly — users don't need Node.js installed.
-
-### Homebrew Formula
-
-For macOS users, you can create a Homebrew tap:
-
-1. Create a GitHub repo: `katipally/homebrew-tap`
-2. Add a formula file `Formula/friday.rb`:
-
-```ruby
-class Friday < Formula
-  desc "Open-source multi-provider AI coding agent for the terminal"
-  homepage "https://github.com/katipally/Friday-CLI"
-  url "https://registry.npmjs.org/fridaycode/-/fridaycode-0.1.0.tgz"
-  sha256 "YOUR_SHA256_HASH"
-  license "MIT"
-
-  depends_on "node@20"
-
-  def install
-    system "npm", "install", *std_npm_args
-    bin.install_symlink Dir["#{libexec}/bin/*"]
-  end
-
-  test do
-    assert_match "0.1.0", shell_output("#{bin}/friday --version")
-  end
-end
-```
-
-3. Users install with:
-```bash
-brew tap katipally/tap
-brew install friday
-```
 
 ---
 
@@ -1228,4 +1509,4 @@ MIT — see [LICENSE](./LICENSE)
 
 ---
 
-*Built with ❤️ by the Friday CLI community. Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md).*
+*Built with ❤️ by [katipally](https://github.com/katipally) and the fridaycode community. Contributions welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md).*
