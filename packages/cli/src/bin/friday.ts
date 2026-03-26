@@ -11,6 +11,7 @@ import { App } from '@fridaycode/tui';
 import { createDefaultRegistry } from '@fridaycode/tools';
 import { MCPServerManager } from '@fridaycode/mcp';
 import { createCommandRegistry } from '../commands/index.js';
+import { createCICommand } from '../commands/ci.js';
 import { loadConfig, loadProjectRules, ensureConfigDir } from '../config/loader.js';
 import { needsOnboarding, runOnboarding } from '../onboarding/wizard.js';
 import { getCurrentVersion } from '../config/version.js';
@@ -176,9 +177,9 @@ program
       const commandRegistry = createCommandRegistry();
 
       // Track cost
-      let totalCostAmount = session.totalCost;
-      let totalInputTok = session.totalInputTokens;
-      let totalOutputTok = session.totalOutputTokens;
+      const totalCostAmount = session.totalCost;
+      const totalInputTok = session.totalInputTokens;
+      const totalOutputTok = session.totalOutputTokens;
 
       // Build command context (used by slash commands)
       const buildCommandContext = (): CommandContext => ({
@@ -293,5 +294,7 @@ program
       process.exit(1);
     }
   });
+
+program.addCommand(createCICommand());
 
 program.parse();
