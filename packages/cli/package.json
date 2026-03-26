@@ -1,0 +1,51 @@
+{
+  "name": "fridaycode-cli",
+  "version": "0.1.0",
+  "description": "FridayCode — open-source agentic coding CLI with model freedom",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "friday": "bin/friday.js"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@fridaycode/shared": "*",
+    "@fridaycode/core": "*",
+    "ink": "^5.1.0",
+    "react": "^18.3.0",
+    "chalk": "^5.4.0",
+    "commander": "^12.1.0",
+    "marked": "^15.0.0",
+    "marked-terminal": "^7.3.0",
+    "cli-highlight": "^2.1.0",
+    "figures": "^6.1.0",
+    "cli-spinners": "^3.2.0",
+    "ink-text-input": "^6.0.0",
+    "strip-ansi": "^7.1.0",
+    "wrap-ansi": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "tsx": "^4.19.0",
+    "ink-testing-library": "^4.0.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "coding",
+    "cli",
+    "agent",
+    "terminal",
+    "friday",
+    "llm",
+    "ollama",
+    "openai",
+    "anthropic"
+  ]
+}

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.friday/
+*.tsbuildinfo
+coverage/
+.env
+.env.local
