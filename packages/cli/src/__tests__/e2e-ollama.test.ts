@@ -156,7 +156,7 @@ describe('E2E: Ollama Backend Pipeline', () => {
         {
           provider: 'ollama',
           model: OLLAMA_MODEL,
-          mode: 'code',
+          mode: 'agent',
           maxIterations: 3,
           temperature: 0,
           maxTokens: 2000,
@@ -207,7 +207,7 @@ describe('E2E: Ollama Backend Pipeline', () => {
       const provider = createProvider({ provider: 'ollama', model: OLLAMA_MODEL });
 
       // Test with different modes
-      for (const mode of ['code', 'chat', 'review'] as const) {
+      for (const mode of ['agent', 'chat', 'plan'] as const) {
         const agent = new AgentLoop(provider, {
           provider: 'ollama',
           model: OLLAMA_MODEL,

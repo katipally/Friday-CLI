@@ -46,7 +46,10 @@ export interface CommandContext {
   setMode: (mode: string) => void;
   clearHistory: () => void;
   getHistory: () => Message[];
+  setHistory: (messages: Message[]) => void;
   getCostSummary: () => { totalCost: number; inputTokens: number; outputTokens: number };
+  listModels?: () => Promise<string[]>;
+  completionRequest?: (prompt: string) => Promise<string>;
 
   toolRegistry?: ToolRegistryLike;
   mcpManager?: MCPManagerLike;

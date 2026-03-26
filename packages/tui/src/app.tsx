@@ -8,6 +8,7 @@ import { StatusBar } from './components/StatusBar.js';
 import { Spinner } from './components/Spinner.js';
 import { ToolOutput } from './components/ToolOutput.js';
 import { PermissionPrompt } from './components/PermissionPrompt.js';
+import { getTheme } from './theme.js';
 
 interface ChatMessage {
   id: string;
@@ -66,8 +67,9 @@ export const App: React.FC<AppProps> = ({
   onStateChange,
 }) => {
   const { exit } = useApp();
+  const t = getTheme();
 
-  // Reactive state for model/provider/mode
+  // Reactive state
   const [activeModel, setActiveModel] = useState(initialModel);
   const [activeProvider, setActiveProvider] = useState(initialProvider);
   const [activeMode, setActiveMode] = useState<AgentMode>(initialMode);
@@ -79,10 +81,9 @@ export const App: React.FC<AppProps> = ({
   const [totalOutputTokens, setTotalOutputTokens] = useState(0);
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null);
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null);
-  const [inputHistory] = useState<string[]>([]);
   const abortRef = useRef(false);
 
-  // Keyboard shortcuts (global)
+  // Global keyboard shortcuts
   useInput((input, key) => {
     if (key.ctrl && input === 'l') {
       setMessages([]);
@@ -116,8 +117,6 @@ export const App: React.FC<AppProps> = ({
     async (input: string) => {
       if (isProcessing) return;
 
-      inputHistory.push(input);
-
       // Handle slash commands
       if (input.startsWith('/')) {
         const [command, ...argParts] = input.slice(1).split(' ');
@@ -125,7 +124,7 @@ export const App: React.FC<AppProps> = ({
           exit();
           return;
         }
-        if (command === 'clear') {
+        if (command === 'clear' || command === 'c') {
           setMessages([]);
           return;
         }
@@ -137,7 +136,6 @@ export const App: React.FC<AppProps> = ({
                 exit();
                 return;
               }
-              // Apply state changes from commands
               if (result.stateChange) {
                 if (result.stateChange.model) setActiveModel(result.stateChange.model);
                 if (result.stateChange.provider) setActiveProvider(result.stateChange.provider);
@@ -154,18 +152,17 @@ export const App: React.FC<AppProps> = ({
             addMessage({
               id: `cmd-err-${Date.now()}`,
               role: 'system',
-              content: `Command error: ${(err as Error).message}`,
+              content: `Error: ${(err as Error).message}`,
             });
           }
           return;
         }
       }
 
-      // Add user message
+      // User message
       const userMsgId = `user-${Date.now()}`;
       addMessage({ id: userMsgId, role: 'user', content: input });
 
-      // Start processing
       setIsProcessing(true);
       abortRef.current = false;
       const streamId = `assistant-${Date.now()}`;
@@ -220,7 +217,7 @@ export const App: React.FC<AppProps> = ({
               addMessage({
                 id: `perm-denied-${Date.now()}`,
                 role: 'system',
-                content: `Permission denied: ${event.toolCall.name}`,
+                content: `⛔ Permission denied: ${event.toolCall.name}`,
               });
               break;
 
@@ -257,7 +254,7 @@ export const App: React.FC<AppProps> = ({
         setCurrentStreamId(null);
       }
     },
-    [isProcessing, onMessage, onSlashCommand, onStateChange, addMessage, updateLastAssistantMessage, finalizeStream, exit, inputHistory],
+    [isProcessing, onMessage, onSlashCommand, onStateChange, addMessage, updateLastAssistantMessage, finalizeStream, exit],
   );
 
   return (
@@ -270,7 +267,7 @@ export const App: React.FC<AppProps> = ({
         projectType={projectType}
       />
 
-      {/* Message area */}
+      {/* Messages */}
       <Box flexDirection="column" flexGrow={1}>
         {messages.map((msg) =>
           msg.role === 'tool' ? (
@@ -294,7 +291,7 @@ export const App: React.FC<AppProps> = ({
         {isProcessing && !currentStreamId && <Spinner label="Thinking..." />}
       </Box>
 
-      {/* Permission prompt (inline) */}
+      {/* Permission prompt */}
       {pendingPermission && (
         <PermissionPrompt
           toolName={pendingPermission.toolCall.name}

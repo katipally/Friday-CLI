@@ -31,7 +31,7 @@ export class Friday {
     this.agentLoop = new AgentLoop(provider, {
       provider: options.provider.provider,
       model: options.provider.model || 'gpt-4o',
-      mode: options.agent?.mode || 'code',
+      mode: options.agent?.mode || 'agent',
       maxIterations: options.agent?.maxIterations || 50,
       ...options.agent,
     }, toolRegistry);

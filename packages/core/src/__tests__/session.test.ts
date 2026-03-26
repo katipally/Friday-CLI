@@ -53,14 +53,14 @@ describe('SessionManager', () => {
   it('should create a new session', () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
 
     expect(session.id).toBeTruthy();
     expect(session.projectPath).toBe('/test/path');
-    expect(session.mode).toBe('code');
+    expect(session.mode).toBe('agent');
     expect(session.provider).toBe('openai');
     expect(session.model).toBe('gpt-4o');
     expect(session.messages).toEqual([]);
@@ -70,7 +70,7 @@ describe('SessionManager', () => {
   it('should set created session as current', () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -81,7 +81,7 @@ describe('SessionManager', () => {
   it('should save and load a session', async () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -108,7 +108,7 @@ describe('SessionManager', () => {
   it('should list saved sessions', async () => {
     const session1 = sessionManager.create({
       projectPath: '/test/path1',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -135,7 +135,7 @@ describe('SessionManager', () => {
   it('should resume a session and return MessageHistory', async () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -164,7 +164,7 @@ describe('SessionManager', () => {
   it('should delete a session', async () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -178,7 +178,7 @@ describe('SessionManager', () => {
   it('should clear current session on delete', async () => {
     const session = sessionManager.create({
       projectPath: '/test',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -196,7 +196,7 @@ describe('SessionManager', () => {
   it('should save session files as pretty-printed JSON', async () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -217,7 +217,7 @@ describe('SessionManager', () => {
   it('should save current session without explicit argument', async () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });
@@ -245,7 +245,7 @@ describe('SessionManager', () => {
   it('should cleanup old sessions', async () => {
     const session = sessionManager.create({
       projectPath: '/test/path',
-      mode: 'code',
+      mode: 'agent',
       provider: 'openai',
       model: 'gpt-4o',
     });

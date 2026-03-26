@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { getTheme } from '../theme.js';
 
 interface StatusBarProps {
   model: string;
@@ -26,17 +27,19 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   outputTokens = 0,
   isThinking = false,
 }) => {
-  const parts: string[] = [`${provider}/${model}`];
-  if (mode && mode !== 'code') parts.push(mode);
-  const right = `${fmtTokens(inputTokens)}\u2191 ${fmtTokens(outputTokens)}\u2193${cost > 0 ? ` $${cost.toFixed(4)}` : ''}`;
+  const t = getTheme();
+  const modeLabel = mode && mode !== 'agent' ? ` · ${mode}` : '';
 
   return (
     <Box justifyContent="space-between" width="100%">
       <Box gap={1}>
-        {isThinking && <Text color="yellow">{'\u25CF'}</Text>}
-        <Text dimColor>{parts.join(' \u00B7 ')}</Text>
+        {isThinking && <Text color={t.colors.warning}>◉</Text>}
+        <Text color={t.colors.muted}>{provider}/{model}{modeLabel}</Text>
       </Box>
-      <Text dimColor>{right}</Text>
+      <Box gap={1}>
+        <Text color={t.colors.muted}>{fmtTokens(inputTokens)}↑ {fmtTokens(outputTokens)}↓</Text>
+        {cost > 0 && <Text color={t.colors.accent}>${cost.toFixed(4)}</Text>}
+      </Box>
     </Box>
   );
 };

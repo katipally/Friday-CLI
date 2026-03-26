@@ -3,7 +3,7 @@ import type { ToolDefinition, TokenUsage } from '@fridaycode/providers';
 
 export type AgentState = 'IDLE' | 'THINKING' | 'ACTING' | 'OBSERVING' | 'TERMINATED' | 'ERROR';
 
-export type AgentMode = 'code' | 'chat' | 'review' | 'plan' | 'debug';
+export type AgentMode = 'agent' | 'chat' | 'plan';
 
 export interface AgentConfig {
   provider: string;

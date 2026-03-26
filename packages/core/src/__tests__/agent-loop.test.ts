@@ -31,7 +31,7 @@ function makeConfig(overrides?: Partial<AgentConfig>): AgentConfig {
   return {
     provider: 'mock',
     model: 'mock-model',
-    mode: 'code',
+    mode: 'agent',
     maxIterations: 10,
     ...overrides,
   };

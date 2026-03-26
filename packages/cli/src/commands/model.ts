@@ -1,53 +1,64 @@
 import type { SlashCommand, CommandContext, CommandResult } from './types.js';
 
-const KNOWN_MODELS: Record<string, string[]> = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o3-mini'],
-  anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-3-5-20241022', 'claude-opus-4-20250514'],
-  google: ['gemini-2.5-pro', 'gemini-2.5-flash'],
-  groq: ['llama-3.1-70b-versatile'],
-  deepseek: ['deepseek-chat', 'deepseek-coder'],
-  ollama: [],
-};
-
 export const modelCommand: SlashCommand = {
   name: 'model',
   aliases: ['m'],
-  description: 'Show, switch, or list available models',
-  usage: '/model [list | <model-name>]',
+  description: 'Switch model or provider, or list available models',
+  usage: '/model [list | <provider>/<model> | <model>]',
 
   async execute(args: string[], context: CommandContext): Promise<CommandResult> {
     if (args.length === 0) {
       return {
-        output: `Current model: ${context.currentModel} (provider: ${context.currentProvider})`,
+        output: `${context.currentProvider}/${context.currentModel}`,
         type: 'info',
       };
     }
 
     if (args[0] === 'list') {
-      const models = KNOWN_MODELS[context.currentProvider];
-      if (!models || models.length === 0) {
-        return {
-          output: `No pre-configured model list for provider "${context.currentProvider}". You can still set any model with /model <name>.`,
-          type: 'info',
-        };
+      // Try to fetch live models from provider
+      if (context.listModels) {
+        try {
+          const models = await context.listModels();
+          if (models.length > 0) {
+            const lines = models.map(m =>
+              m === context.currentModel ? `  ● ${m} (active)` : `    ${m}`,
+            );
+            return {
+              output: [`Models for ${context.currentProvider}:`, ...lines].join('\n'),
+              type: 'table',
+            };
+          }
+        } catch {
+          // Fall through
+        }
       }
-
-      const lines = models.map(m =>
-        m === context.currentModel ? `  * ${m} (current)` : `    ${m}`,
-      );
-
       return {
-        output: [`Models for ${context.currentProvider}:`, '', ...lines].join('\n'),
-        type: 'table',
+        output: `Could not fetch models for "${context.currentProvider}". Set any model with /model <name>.`,
+        type: 'info',
       };
     }
 
-    const modelName = args.join(' ');
-    context.setModel(modelName);
+    const input = args.join(' ');
+
+    // Support provider/model syntax (e.g. "openai/gpt-4o", "ollama/llama3.2")
+    if (input.includes('/')) {
+      const [newProvider, ...modelParts] = input.split('/');
+      const newModel = modelParts.join('/');
+      context.setProvider(newProvider);
+      context.setModel(newModel);
+      return {
+        output: `Switched to ${newProvider}/${newModel}`,
+        type: 'success',
+        stateChange: { provider: newProvider, model: newModel },
+      };
+    }
+
+    // Model only
+    context.setModel(input);
     return {
-      output: `Switched to model: ${modelName}`,
+      output: `Switched to ${context.currentProvider}/${input}`,
       type: 'success',
-      stateChange: { model: modelName },
+      stateChange: { model: input },
     };
   },
 };

@@ -24,10 +24,10 @@ function mockContext(overrides: Partial<CommandContext> = {}): CommandContext {
 }
 
 describe('CommandRegistry', () => {
-  it('createCommandRegistry registers all 12 commands', () => {
+  it('createCommandRegistry registers all 17 commands', () => {
     const registry = createCommandRegistry();
     const all = registry.getAll();
-    expect(all).toHaveLength(12);
+    expect(all).toHaveLength(17);
     const names = all.map((c) => c.name);
     expect(names).toContain('help');
     expect(names).toContain('model');

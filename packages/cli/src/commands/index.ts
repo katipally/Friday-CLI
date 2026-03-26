@@ -13,6 +13,11 @@ export { initCommand } from './init.js';
 export { toolsCommand } from './tools.js';
 export { mcpCommand } from './mcp.js';
 export { updateCommand } from './update.js';
+export { doctorCommand } from './doctor.js';
+export { statsCommand } from './stats.js';
+export { themeCommand, wireThemeFunctions } from './theme.js';
+export { diffCommand } from './diff.js';
+export { contextCommand } from './context.js';
 
 import { CommandRegistry } from './registry.js';
 import { helpCommand, setHelpRegistry } from './help.js';
@@ -27,6 +32,11 @@ import { initCommand } from './init.js';
 import { toolsCommand } from './tools.js';
 import { mcpCommand } from './mcp.js';
 import { updateCommand } from './update.js';
+import { doctorCommand } from './doctor.js';
+import { statsCommand } from './stats.js';
+import { themeCommand } from './theme.js';
+import { diffCommand } from './diff.js';
+import { contextCommand } from './context.js';
 
 export function createCommandRegistry(): CommandRegistry {
   const registry = new CommandRegistry();
@@ -42,8 +52,12 @@ export function createCommandRegistry(): CommandRegistry {
   registry.register(toolsCommand);
   registry.register(mcpCommand);
   registry.register(updateCommand);
+  registry.register(doctorCommand);
+  registry.register(statsCommand);
+  registry.register(themeCommand);
+  registry.register(diffCommand);
+  registry.register(contextCommand);
 
-  // Wire up help command so it can list all registered commands
   setHelpRegistry(registry);
 
   return registry;

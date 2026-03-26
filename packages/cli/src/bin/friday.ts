@@ -10,12 +10,13 @@ import { AgentLoop, PermissionSystem, SessionManager, CostTracker } from '@frida
 import { App } from '@fridaycode/tui';
 import { createDefaultRegistry } from '@fridaycode/tools';
 import { MCPServerManager } from '@fridaycode/mcp';
-import { createCommandRegistry } from '../commands/index.js';
+import { createCommandRegistry, wireThemeFunctions } from '../commands/index.js';
 import { createCICommand } from '../commands/ci.js';
 import { loadConfig, loadProjectRules, ensureConfigDir } from '../config/loader.js';
 import { needsOnboarding, runOnboarding } from '../onboarding/wizard.js';
 import { getCurrentVersion } from '../config/version.js';
 import type { AgentEvent, AgentMode } from '@fridaycode/core';
+import type { Message } from '@fridaycode/shared';
 import type { CommandContext, CommandResult } from '../commands/types.js';
 import type { Session } from '@fridaycode/core';
 
@@ -42,7 +43,7 @@ program
   .version(VERSION)
   .option('-m, --model <model>', 'LLM model to use')
   .option('-p, --provider <provider>', 'LLM provider (openai, anthropic, ollama, etc.)')
-  .option('--mode <mode>', 'Agent mode (code, chat, review, plan, debug)', 'code')
+  .option('--mode <mode>', 'Agent mode (agent, chat, plan)', 'agent')
   .option('--no-interactive', 'Run in non-interactive mode')
   .option('--theme <theme>', 'UI theme (dark, light)')
   .option('--max-iterations <n>', 'Maximum agent iterations', '50')
@@ -111,7 +112,7 @@ program
       }
 
       // Mutable state for mode/model switching via slash commands
-      let currentMode = (options.mode || 'code') as AgentMode;
+      let currentMode = (options.mode || 'agent') as AgentMode;
       let currentModel = config.defaultModel;
       let currentProvider = config.defaultProvider;
 
@@ -208,6 +209,15 @@ program
       // Slash command registry
       const commandRegistry = createCommandRegistry();
 
+      // Wire theme system into the /theme command
+      try {
+        const { setTheme: setTuiTheme, getTheme: getTuiTheme } = await import('@fridaycode/tui');
+        wireThemeFunctions(
+          (name: string) => setTuiTheme(name),
+          () => getTuiTheme().name || 'dark',
+        );
+      } catch { /* theme wiring optional */ }
+
       // Build command context (used by slash commands) — always reads live values
       const buildCommandContext = (): CommandContext => ({
         currentProvider,
@@ -220,6 +230,7 @@ program
         setMode: (m: string) => { currentMode = m as AgentMode; },
         clearHistory: () => agent.reset(),
         getHistory: () => agent.getHistory(),
+        setHistory: (msgs: Message[]) => agent.loadHistory(msgs),
         getCostSummary: () => {
           const tokens = costTracker.getTotalTokens();
           return {
@@ -227,6 +238,26 @@ program
             inputTokens: tokens.input,
             outputTokens: tokens.output,
           };
+        },
+        listModels: async () => {
+          try {
+            const models = await currentLLMProvider.listModels();
+            return models.map((m: any) => typeof m === 'string' ? m : m.id || m.name || String(m));
+          } catch {
+            return [];
+          }
+        },
+        completionRequest: async (prompt: string) => {
+          try {
+            const resp = await currentLLMProvider.generate({
+              messages: [{ role: 'user', content: prompt }],
+              model: currentModel,
+              maxTokens: 1024,
+            });
+            return resp.content;
+          } catch (err) {
+            return `[summarization failed: ${(err as Error).message}]`;
+          }
         },
         toolRegistry: toolRegistry as any,
         mcpManager: mcpManager as any,

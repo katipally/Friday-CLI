@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
+import { getTheme } from '../theme.js';
 
 interface PermissionPromptProps {
   toolName: string;
@@ -14,6 +15,8 @@ export const PermissionPrompt: React.FC<PermissionPromptProps> = ({
   reason,
   onRespond,
 }) => {
+  const t = getTheme();
+
   useInput((input) => {
     const key = input.toLowerCase();
     if (key === 'y') onRespond('allow_once');
@@ -22,22 +25,27 @@ export const PermissionPrompt: React.FC<PermissionPromptProps> = ({
   });
 
   const argsStr = JSON.stringify(args, null, 2);
-  const truncated = argsStr.length > 150 ? argsStr.slice(0, 150) + '\u2026' : argsStr;
+  const truncated = argsStr.length > 200 ? argsStr.slice(0, 200) + '…' : argsStr;
 
   return (
     <Box flexDirection="column" marginLeft={2} marginY={1}>
       <Box gap={1}>
-        <Text color="yellow" bold>{'\u26A0'}</Text>
-        <Text bold>{toolName}</Text>
-        <Text dimColor>{reason}</Text>
+        <Text color={t.colors.warning} bold>⚠</Text>
+        <Text bold>Permission required:</Text>
+        <Text color={t.colors.toolCall} bold>{toolName}</Text>
       </Box>
+      {reason && (
+        <Box marginLeft={4}>
+          <Text color={t.colors.muted}>{reason}</Text>
+        </Box>
+      )}
       <Box marginLeft={4}>
-        <Text dimColor>{truncated}</Text>
+        <Text color={t.colors.muted}>{truncated}</Text>
       </Box>
-      <Box marginLeft={4} gap={2}>
-        <Text color="green" bold>[y]es</Text>
-        <Text color="red" bold>[n]o</Text>
-        <Text color="cyan" bold>[a]lways</Text>
+      <Box marginLeft={4} gap={2} marginTop={0}>
+        <Text color={t.colors.permissionAllow} bold>[y]es</Text>
+        <Text color={t.colors.permissionDeny} bold>[n]o</Text>
+        <Text color={t.colors.primary} bold>[a]lways</Text>
       </Box>
     </Box>
   );

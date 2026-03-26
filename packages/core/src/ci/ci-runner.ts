@@ -126,7 +126,7 @@ export class CIRunner {
         {
           provider: this.options.provider,
           model: this.options.model,
-          mode: 'code',
+          mode: 'agent',
           maxIterations: this.options.maxTurns,
         },
         toolRegistry,

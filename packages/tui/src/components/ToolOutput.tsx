@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
+import { getTheme } from '../theme.js';
 
 interface ToolOutputProps {
   toolName: string;
@@ -9,7 +10,7 @@ interface ToolOutputProps {
   isExecuting?: boolean;
 }
 
-const MAX_LINES = 20;
+const MAX_LINES = 25;
 
 function formatHeader(toolName: string, args: Record<string, unknown>): string {
   if (toolName === 'shell_exec' && args.command) return `$ ${String(args.command)}`;
@@ -17,8 +18,9 @@ function formatHeader(toolName: string, args: Record<string, unknown>): string {
     return String(args.path ?? args.file_path);
   }
   if ((toolName === 'grep' || toolName === 'glob') && args.pattern) return String(args.pattern);
+  if (toolName === 'git' && args.subcommand) return `git ${String(args.subcommand)}`;
   const s = JSON.stringify(args);
-  return s.length > 50 ? s.slice(0, 50) + '\u2026' : s;
+  return s.length > 60 ? s.slice(0, 60) + '…' : s;
 }
 
 export const ToolOutput: React.FC<ToolOutputProps> = ({
@@ -28,8 +30,9 @@ export const ToolOutput: React.FC<ToolOutputProps> = ({
   success,
   isExecuting = false,
 }) => {
-  const icon = isExecuting ? '\u25CB' : success === false ? '\u2718' : '\u25CF';
-  const iconColor = isExecuting ? 'yellow' : success === false ? 'red' : 'green';
+  const t = getTheme();
+  const icon = isExecuting ? '⟳' : success === false ? '✘' : '✔';
+  const iconColor = isExecuting ? t.colors.warning : success === false ? t.colors.error : t.colors.success;
   const header = args ? formatHeader(toolName, args) : '';
 
   const lines = output ? output.split('\n') : [];
@@ -39,16 +42,16 @@ export const ToolOutput: React.FC<ToolOutputProps> = ({
   return (
     <Box flexDirection="column" marginLeft={2} marginBottom={0}>
       <Box gap={1}>
-        <Text color={iconColor as 'yellow' | 'red' | 'green'}>{icon}</Text>
-        <Text bold>{toolName}</Text>
-        {header && <Text dimColor>{header}</Text>}
+        <Text color={iconColor}>{icon}</Text>
+        <Text bold color={t.colors.toolCall}>{toolName}</Text>
+        {header && <Text color={t.colors.muted}>{header}</Text>}
       </Box>
       {output && (
         <Box marginLeft={4} flexDirection="column">
-          <Text color={success === false ? 'red' : undefined} dimColor={success !== false} wrap="wrap">
+          <Text color={success === false ? t.colors.error : t.colors.muted} wrap="wrap">
             {displayLines.join('\n')}
           </Text>
-          {truncated && <Text dimColor>[{lines.length - MAX_LINES} more lines]</Text>}
+          {truncated && <Text color={t.colors.muted}>[+{lines.length - MAX_LINES} more lines]</Text>}
         </Box>
       )}
     </Box>

@@ -182,9 +182,9 @@ describe('CommandRegistry', () => {
       expect(names).toContain('exit');
     });
 
-    it('registers exactly 12 commands', () => {
+    it('registers exactly 17 commands', () => {
       const registry = createCommandRegistry();
-      expect(registry.getAll()).toHaveLength(12);
+      expect(registry.getAll()).toHaveLength(17);
     });
   });
 
