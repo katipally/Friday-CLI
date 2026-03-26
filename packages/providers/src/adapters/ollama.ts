@@ -9,6 +9,7 @@ import type {
   ProviderConfig,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('ollama');
 
@@ -163,11 +164,14 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('ollama');
+    if (cached) return cached;
+
     try {
       const response = await fetch(`${this.baseUrl}/api/tags`);
       if (!response.ok) return [];
       const data = await response.json() as any;
-      return (data.models || []).map((m: any) => ({
+      const models: ModelInfo[] = (data.models || []).map((m: any) => ({
         id: m.name,
         name: m.name,
         contextWindow: 128000,
@@ -176,6 +180,8 @@ export class OllamaProvider implements LLMProvider {
         supportsVision: m.name.includes('vision') || m.name.includes('llava'),
         supportsToolCalling: false,
       }));
+      setCachedModels('ollama', models);
+      return models;
     } catch {
       return [];
     }

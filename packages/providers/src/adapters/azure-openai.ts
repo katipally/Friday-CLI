@@ -11,6 +11,7 @@ import type {
   ToolCallResponse,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('azure-openai');
 
@@ -27,6 +28,9 @@ export class AzureOpenAIProvider implements LLMProvider {
   readonly displayName = 'Azure OpenAI';
   private client: OpenAI;
   private deploymentName: string;
+  private endpoint: string;
+  private apiKey: string;
+  private apiVersion: string;
 
   constructor(config: ProviderConfig) {
     const endpoint = (config.options?.endpoint as string) || process.env.AZURE_OPENAI_ENDPOINT;
@@ -48,6 +52,9 @@ export class AzureOpenAIProvider implements LLMProvider {
     }
 
     this.deploymentName = deploymentName;
+    this.endpoint = endpoint;
+    this.apiKey = apiKey;
+    this.apiVersion = apiVersion;
 
     const baseURL = endpoint.replace(/\/+$/, '') + '/openai/deployments/' + deploymentName;
 
@@ -217,6 +224,41 @@ export class AzureOpenAIProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('azure-openai');
+    if (cached) return cached;
+
+    try {
+      const url = `${this.endpoint.replace(/\/+$/, '')}/openai/deployments?api-version=${this.apiVersion}`;
+      const response = await fetch(url, {
+        headers: { 'api-key': this.apiKey },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { data?: Array<{ id: string; model: string; status?: string }> };
+        if (data.data && data.data.length > 0) {
+          const models: ModelInfo[] = data.data
+            .filter((d) => d.status === 'succeeded' || !d.status)
+            .map((d) => {
+              const fallback = AZURE_OPENAI_MODELS.find((m) => m.id === d.model || m.id === d.id);
+              return {
+                id: d.id,
+                name: `${d.model || d.id} (Azure)`,
+                contextWindow: fallback?.contextWindow ?? 128000,
+                inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+                outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+                supportsVision: fallback?.supportsVision ?? false,
+                supportsToolCalling: fallback?.supportsToolCalling ?? true,
+              };
+            });
+          setCachedModels('azure-openai', models);
+          return models;
+        }
+      }
+    } catch (error) {
+      logger.debug('Failed to fetch Azure deployments dynamically, using defaults', error as Record<string, unknown>);
+    }
+
+    setCachedModels('azure-openai', AZURE_OPENAI_MODELS);
     return AZURE_OPENAI_MODELS;
   }
 

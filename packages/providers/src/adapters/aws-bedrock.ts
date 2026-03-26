@@ -23,6 +23,7 @@ import type {
   ToolDefinition,
 } from '../types.js';
 import { registerProvider } from '../registry.js';
+import { getCachedModels, setCachedModels } from '../model-cache.js';
 
 const logger = createLogger('aws-bedrock');
 
@@ -42,6 +43,7 @@ export class AWSBedrockProvider implements LLMProvider {
   readonly name = 'aws-bedrock';
   readonly displayName = 'AWS Bedrock';
   private client: BedrockRuntimeClient;
+  private clientConfig: Record<string, unknown>;
 
   constructor(config: ProviderConfig) {
     const region = (config.options?.region as string) || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
@@ -65,6 +67,7 @@ export class AWSBedrockProvider implements LLMProvider {
       };
     }
 
+    this.clientConfig = clientConfig;
     this.client = new BedrockRuntimeClient(clientConfig);
   }
 
@@ -264,6 +267,41 @@ export class AWSBedrockProvider implements LLMProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const cached = getCachedModels('aws-bedrock');
+    if (cached) return cached;
+
+    try {
+      // Dynamic import — @aws-sdk/client-bedrock may not be installed
+      const bedrockModule = await import(/* @vite-ignore */ '@aws-sdk/client-bedrock' as string) as {
+        BedrockClient: new (config: Record<string, unknown>) => { send: (cmd: unknown) => Promise<{ modelSummaries?: Array<{ modelId?: string; modelName?: string; inferenceTypesSupported?: string[] }> }> };
+        ListFoundationModelsCommand: new (input: Record<string, unknown>) => unknown;
+      };
+      const bedrockClient = new bedrockModule.BedrockClient(this.clientConfig);
+      const response = await bedrockClient.send(new bedrockModule.ListFoundationModelsCommand({}));
+
+      if (response.modelSummaries && response.modelSummaries.length > 0) {
+        const models: ModelInfo[] = response.modelSummaries
+          .filter((m: { modelId?: string; inferenceTypesSupported?: string[] }) => m.modelId && m.inferenceTypesSupported?.includes('ON_DEMAND'))
+          .map((m: { modelId?: string; modelName?: string }) => {
+            const fallback = BEDROCK_MODELS.find((b) => b.id === m.modelId);
+            return {
+              id: m.modelId!,
+              name: m.modelName || m.modelId!,
+              contextWindow: fallback?.contextWindow ?? 128000,
+              inputPricePerMToken: fallback?.inputPricePerMToken ?? 0,
+              outputPricePerMToken: fallback?.outputPricePerMToken ?? 0,
+              supportsVision: fallback?.supportsVision ?? false,
+              supportsToolCalling: fallback?.supportsToolCalling ?? false,
+            };
+          });
+        setCachedModels('aws-bedrock', models);
+        return models;
+      }
+    } catch (error) {
+      logger.debug('Failed to fetch Bedrock models dynamically, using defaults', error as Record<string, unknown>);
+    }
+
+    setCachedModels('aws-bedrock', BEDROCK_MODELS);
     return BEDROCK_MODELS;
   }
 

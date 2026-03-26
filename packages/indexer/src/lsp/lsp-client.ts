@@ -5,7 +5,7 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
   type MessageConnection,
-} from 'vscode-jsonrpc/node';
+} from 'vscode-jsonrpc/node.js';
 
 export interface LSPClientOptions {
   command: string;
