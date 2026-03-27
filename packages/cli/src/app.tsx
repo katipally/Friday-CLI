@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Box, Text, Static, useInput, useApp } from 'ink';
+import { Box, Text, Static, useInput, useApp, useStdout } from 'ink';
 import type { Settings, Message, AgentInstance, ToolContext, ModelProvider, Model, Session } from '@fridaycode/shared';
 import type { CliOptions } from './index.js';
 
@@ -27,6 +27,26 @@ import './themes/dracula.js';
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+/** Hook: track terminal dimensions and re-render on resize */
+function useTerminalSize() {
+  const { stdout } = useStdout();
+  const [size, setSize] = useState({
+    rows: stdout?.rows ?? 24,
+    columns: stdout?.columns ?? 80,
+  });
+
+  useEffect(() => {
+    if (!stdout) return;
+    const onResize = () => {
+      setSize({ rows: stdout.rows ?? 24, columns: stdout.columns ?? 80 });
+    };
+    stdout.on('resize', onResize);
+    return () => { stdout.off('resize', onResize); };
+  }, [stdout]);
+
+  return size;
+}
 
 interface AppProps {
   settings: Settings;
@@ -781,108 +801,112 @@ export function App({ settings, initialPrompt, options }: AppProps) {
 
   // ─── Render ────────────────────────────────────────────────
   const isLoading = state === 'streaming' || state === 'loading' || state === 'tool-running';
+  const { rows: termRows, columns: termColumns } = useTerminalSize();
 
   // Split messages: completed (Static) vs active (dynamic)
   const completedMessages = messages.slice(0, completedMsgCount);
   const activeMessages = messages.slice(completedMsgCount);
 
   return (
-    <Box flexDirection="column">
-      {/* Welcome screen */}
-      {showWelcome && state !== 'model-select' && (
-        <WelcomeScreen settings={{...settings, activeModel: currentModel, activeProvider: currentProvider}} cwd={process.cwd()} />
-      )}
-
-      {/* Error display */}
-      {state === 'error' && errorMsg && (
-        <Box marginY={1}>
-          <Text color="#F43F5E" bold>Error: </Text>
-          <Text>{errorMsg}</Text>
+    <Box flexDirection="column" height={termRows} width={termColumns}>
+      {/* Model switcher overlay — takes full screen */}
+      {state === 'model-select' ? (
+        <Box flexDirection="column" flexGrow={1}>
+          <ModelSwitcher
+            models={availableModels}
+            currentModel={currentModel}
+            onSelect={handleModelSelect}
+            onCancel={handleModelCancel}
+          />
         </Box>
-      )}
+      ) : (
+        <>
+          {/* Scrollable content area — takes all available space */}
+          <Box flexDirection="column" flexGrow={1} overflowY="hidden">
+            {/* Welcome screen */}
+            {showWelcome && (
+              <WelcomeScreen settings={{...settings, activeModel: currentModel, activeProvider: currentProvider}} cwd={process.cwd()} />
+            )}
 
-      {/* Model switcher overlay */}
-      {state === 'model-select' && (
-        <ModelSwitcher
-          models={availableModels}
-          currentModel={currentModel}
-          onSelect={handleModelSelect}
-          onCancel={handleModelCancel}
-        />
-      )}
+            {/* Error display */}
+            {state === 'error' && errorMsg && (
+              <Box marginY={1}>
+                <Text color="#F43F5E" bold>Error: </Text>
+                <Text>{errorMsg}</Text>
+              </Box>
+            )}
 
-      {/* Completed messages — permanently rendered, never re-rendered (perf win) */}
-      {state !== 'model-select' && completedMessages.length > 0 && (
-        <Static items={completedMessages}>
-          {(msg, i) => (
-            <Box key={`msg-${i}-${msg.timestamp ?? i}`}>
-              <MessageRow message={msg} verbose={verbose} />
-            </Box>
+            {/* Completed messages — permanently rendered, never re-rendered (perf win) */}
+            {completedMessages.length > 0 && (
+              <Static items={completedMessages}>
+                {(msg, i) => (
+                  <Box key={`msg-${i}-${msg.timestamp ?? i}`}>
+                    <MessageRow message={msg} verbose={verbose} />
+                  </Box>
+                )}
+              </Static>
+            )}
+
+            {/* Active messages + streaming output (dynamic, re-rendered each frame) */}
+            <Output
+              messages={activeMessages}
+              streamContent={streamContent}
+              state={state}
+              toolStatus={toolStatus ?? undefined}
+              verbose={verbose}
+              turnStartTime={turnDuration > 0 ? turnDuration : undefined}
+            />
+          </Box>
+
+          {/* Background tasks */}
+          {backgroundTasks.length > 0 && (
+            <TaskList tasks={backgroundTasks} visible={true} />
           )}
-        </Static>
-      )}
 
-      {/* Active messages + streaming output (dynamic, re-rendered each frame) */}
-      {state !== 'model-select' && (
-        <Output
-          messages={activeMessages}
-          streamContent={streamContent}
-          state={state}
-          toolStatus={toolStatus ?? undefined}
-          verbose={verbose}
-          turnStartTime={turnDuration > 0 ? turnDuration : undefined}
-        />
-      )}
+          {/* Context viewer */}
+          {showContext && (
+            <ContextViewer
+              inputTokens={tokenCount.input}
+              outputTokens={tokenCount.output}
+              contextLimit={settings.maxTokens * 4}
+              messageCount={messages.length}
+            />
+          )}
 
-      {/* Background tasks */}
-      {backgroundTasks.length > 0 && (
-        <TaskList tasks={backgroundTasks} visible={true} />
-      )}
+          {/* Permission prompt */}
+          {state === 'permission' && pendingPermission && (
+            <PermissionPrompt
+              toolName={pendingPermission.toolName}
+              input={pendingPermission.input}
+              onAllow={handlePermissionAllow}
+              onDeny={handlePermissionDeny}
+              onAllowAlways={handlePermissionAllowAlways}
+            />
+          )}
 
-      {/* Context viewer */}
-      {showContext && (
-        <ContextViewer
-          inputTokens={tokenCount.input}
-          outputTokens={tokenCount.output}
-          contextLimit={settings.maxTokens * 4}
-          messageCount={messages.length}
-        />
-      )}
-
-      {/* Permission prompt */}
-      {state === 'permission' && pendingPermission && (
-        <PermissionPrompt
-          toolName={pendingPermission.toolName}
-          input={pendingPermission.input}
-          onAllow={handlePermissionAllow}
-          onDeny={handlePermissionDeny}
-          onAllowAlways={handlePermissionAllowAlways}
-        />
-      )}
-
-      {/* Tmux-style status bar + prompt (always at bottom) */}
-      {state !== 'model-select' && (
-        <Box flexDirection="column" marginTop={0}>
-          <StatusLine
-            model={currentModel}
-            provider={currentProvider}
-            tokenCount={tokenCount}
-            state={state}
-            gitBranch={gitBranch}
-            permissionMode={permissionMode}
-            turnDuration={turnDuration}
-            sessionName={sessionName}
-            mcpServerCount={coreRef.current?.mcpManager?.getConnectedServers()?.length}
-          />
-          <Prompt
-            onSubmit={handleSubmit}
-            disabled={state === 'permission' || state === 'error'}
-            loading={isLoading}
-            permissionMode={permissionMode}
-            suggestion={promptSuggestion}
-            availableModels={availableModels.map(m => m.id)}
-          />
-        </Box>
+          {/* Pinned bottom: status bar + prompt */}
+          <Box flexDirection="column">
+            <StatusLine
+              model={currentModel}
+              provider={currentProvider}
+              tokenCount={tokenCount}
+              state={state}
+              gitBranch={gitBranch}
+              permissionMode={permissionMode}
+              turnDuration={turnDuration}
+              sessionName={sessionName}
+              mcpServerCount={coreRef.current?.mcpManager?.getConnectedServers()?.length}
+            />
+            <Prompt
+              onSubmit={handleSubmit}
+              disabled={state === 'permission' || state === 'error'}
+              loading={isLoading}
+              permissionMode={permissionMode}
+              suggestion={promptSuggestion}
+              availableModels={availableModels.map(m => m.id)}
+            />
+          </Box>
+        </>
       )}
     </Box>
   );

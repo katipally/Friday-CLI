@@ -95,7 +95,6 @@ export async function main(argv: string[]): Promise<void> {
 
     // Enter alternate screen buffer (vim/tmux-style dedicated view)
     process.stdout.write('\x1b[?1049h\x1b[H\x1b[2J');
-    process.stdout.write('\x1b[?25l'); // Hide cursor (Ink manages its own)
 
     const { waitUntilExit } = render(
       React.createElement(App, {
@@ -112,9 +111,7 @@ export async function main(argv: string[]): Promise<void> {
     try {
       await waitUntilExit();
     } finally {
-      // Restore terminal: show cursor + exit alternate screen
-      process.stdout.write('\x1b[?25h');
-      process.stdout.write('\x1b[?1049l');
+      process.stdout.write('\x1b[?25h\x1b[?1049l');
     }
     return;
   }
@@ -124,18 +121,16 @@ export async function main(argv: string[]): Promise<void> {
 
   // Enter alternate screen buffer (vim/tmux-style dedicated view)
   process.stdout.write('\x1b[?1049h\x1b[H\x1b[2J');
-  process.stdout.write('\x1b[?25l'); // Hide cursor (Ink manages its own)
 
   // Ensure terminal is restored on unexpected exit
   const restoreTerminal = () => {
-    process.stdout.write('\x1b[?25h');
-    process.stdout.write('\x1b[?1049l');
+    process.stdout.write('\x1b[?25h\x1b[?1049l');
   };
   process.on('exit', restoreTerminal);
   process.on('SIGTERM', () => { restoreTerminal(); process.exit(0); });
   process.on('SIGHUP', () => { restoreTerminal(); process.exit(0); });
 
-  // Interactive mode: render Ink app with alternate screen
+  // Interactive mode: render Ink app
   const { waitUntilExit } = render(
     React.createElement(App, {
       settings,
@@ -151,9 +146,7 @@ export async function main(argv: string[]): Promise<void> {
   try {
     await waitUntilExit();
   } finally {
-    // Restore terminal: show cursor + exit alternate screen
-    process.stdout.write('\x1b[?25h');
-    process.stdout.write('\x1b[?1049l');
+    restoreTerminal();
   }
 }
 
