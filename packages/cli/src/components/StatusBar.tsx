@@ -11,6 +11,8 @@ interface StatusBarProps {
   turnDuration?: number;
   cost?: number;
   sessionName?: string;
+  mcpServerCount?: number;
+  toolCount?: number;
 }
 
 export function StatusBar({ model, provider, tokenCount, state }: StatusBarProps) {
@@ -32,6 +34,8 @@ export function StatusLine({
   turnDuration,
   cost,
   sessionName,
+  mcpServerCount,
+  toolCount,
 }: StatusBarProps) {
   const totalTokens = tokenCount.input + tokenCount.output;
 
@@ -104,6 +108,14 @@ export function StatusLine({
         <>
           <Text dimColor>·</Text>
           <Text dimColor italic>{sessionName}</Text>
+        </>
+      )}
+
+      {/* MCP servers */}
+      {mcpServerCount !== undefined && mcpServerCount > 0 && (
+        <>
+          <Text dimColor>·</Text>
+          <Text color="#22D3EE">⚡{mcpServerCount} mcp</Text>
         </>
       )}
     </Box>

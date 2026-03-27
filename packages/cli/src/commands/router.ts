@@ -37,6 +37,14 @@ export interface CommandContext {
   toggleVerbose: () => void;
   /** Get token counts */
   getTokenCount: () => { input: number; output: number };
+  /** MCP manager access */
+  getMcpManager?: () => any;
+  /** Hooks engine access */
+  getHooks?: () => any;
+  /** Plugin registry access */
+  getPluginRegistry?: () => any;
+  /** Plugin lifecycle access */
+  getPluginLifecycle?: () => any;
 }
 
 export interface SlashCommand {

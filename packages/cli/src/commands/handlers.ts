@@ -263,17 +263,40 @@ registerCommand({
 
 registerCommand({
   name: '/skills',
-  description: 'List available skills',
-  async handler(_args, ctx) {
+  description: 'List or run a skill',
+  usage: '/skills [run <name> [args]]',
+  async handler(args, ctx) {
     try {
-      const { discoverSkills } = await import('@fridaycode/core');
+      const { discoverSkills, BUILT_IN_SKILLS, getBuiltInSkill, executeSkill, formatSkillInfo } = await import('@fridaycode/core');
       const skills = await discoverSkills(ctx.cwd);
-      if (skills.length === 0) {
-        ctx.print('No custom skills found.\nBuilt-in: batch, debug, loop, simplify\nPlace .md skills in .friday/skills/');
+      const allSkills = [...BUILT_IN_SKILLS, ...skills];
+
+      const parts = args?.trim().split(/\s+/) ?? [];
+      if (parts[0] === 'run' && parts[1]) {
+        const skillName = parts[1];
+        const skillArgs = parts.slice(2).join(' ') || undefined;
+        const skill = getBuiltInSkill(skillName) ?? skills.find(s => s.name === skillName);
+        if (!skill) {
+          ctx.print(`Skill not found: ${skillName}\nAvailable: ${allSkills.map(s => s.name).join(', ')}`);
+          return;
+        }
+        ctx.print(`Running skill: ${skill.name}...`);
+        ctx.sendMessage(`[Skill: ${skill.name}] ${skill.body.replace('$ARGUMENTS', skillArgs ?? '')}`);
         return;
       }
-      const lines = skills.map((s) => `  ${s.name}  —  ${s.description ?? '(no description)'}`);
-      ctx.print('Skills:\n  batch  —  Apply changes across multiple files\n  debug  —  Systematic debugging\n  loop   —  Iterative test-fix-verify\n  simplify — Reduce complexity\n' + lines.join('\n'));
+
+      if (parts[0] === 'info' && parts[1]) {
+        const skill = getBuiltInSkill(parts[1]) ?? skills.find(s => s.name === parts[1]);
+        if (!skill) { ctx.print(`Skill not found: ${parts[1]}`); return; }
+        ctx.print(formatSkillInfo(skill));
+        return;
+      }
+
+      // Default: list all skills
+      const lines = allSkills.map(s =>
+        `  ${s.name.padEnd(15)} ${s.description ?? '(no description)'}`
+      );
+      ctx.print('Skills:\n' + lines.join('\n') + '\n\nRun: /skills run <name> [args]\nInfo: /skills info <name>');
     } catch {
       ctx.print('Built-in skills: batch, debug, loop, simplify\nPlace custom skills in .friday/skills/');
     }
@@ -302,8 +325,40 @@ registerCommand({
 registerCommand({
   name: '/mcp',
   description: 'Show MCP server status',
-  handler(_args, ctx) {
-    ctx.print('No MCP servers configured.\nAdd servers in ~/.friday/settings.json under "mcpServers".');
+  usage: '/mcp [connect|disconnect|list]',
+  async handler(args, ctx) {
+    const mcpManager = ctx.getMcpManager?.();
+    if (!mcpManager) {
+      ctx.print('No MCP servers configured.\nAdd servers in ~/.friday/settings.json under "mcpServers".');
+      return;
+    }
+
+    const sub = args?.trim();
+    if (sub === 'connect') {
+      ctx.print('Reconnecting MCP servers...');
+      const statuses = await mcpManager.connectAll();
+      const lines = statuses.map((s: any) =>
+        `  ${s.name}  ${s.connected ? '✓' : '✗'}  ${s.connected ? `${s.toolCount} tools, ${s.resourceCount} resources` : s.error ?? 'failed'}`
+      );
+      ctx.print('MCP Servers:\n' + lines.join('\n'));
+      return;
+    }
+    if (sub === 'disconnect') {
+      await mcpManager.disconnectAll();
+      ctx.print('All MCP servers disconnected.');
+      return;
+    }
+
+    // Default: show status
+    const statuses = mcpManager.getStatuses();
+    if (statuses.length === 0) {
+      ctx.print('No MCP servers configured.\nAdd servers in ~/.friday/settings.json under "mcpServers".');
+      return;
+    }
+    const lines = statuses.map((s: any) =>
+      `  ${s.name}  ${s.connected ? '✓ connected' : '✗ disconnected'}  ${s.toolCount} tools  ${s.resourceCount} resources`
+    );
+    ctx.print('MCP Servers:\n' + lines.join('\n'));
   },
 });
 
@@ -620,6 +675,118 @@ registerCommand({
     }
     // Prefix with context so the model knows it's a side question
     ctx.sendMessage(`[Side question — answer briefly, this is tangential to the main task] ${args.trim()}`);
+  },
+});
+
+// ─── Hooks ───────────────────────────────────────────────────
+
+registerCommand({
+  name: '/hooks',
+  description: 'List registered hooks',
+  handler(_args, ctx) {
+    const hooks = ctx.getHooks?.();
+    if (!hooks) {
+      ctx.print('No hooks engine available.');
+      return;
+    }
+    const events = ['SessionStart', 'PreToolUse', 'PostToolUse', 'Notification'] as const;
+    const lines: string[] = [];
+    for (const event of events) {
+      const eventHooks = hooks.getHooksForEvent(event);
+      if (eventHooks.length > 0) {
+        lines.push(`  ${event}:`);
+        for (const h of eventHooks) {
+          const target = h.command ? `cmd: ${h.command}` : h.url ? `url: ${h.url}` : '(no action)';
+          const matcher = h.matcher ? ` [${h.matcher}]` : '';
+          lines.push(`    ${target}${matcher}`);
+        }
+      }
+    }
+    if (lines.length === 0) {
+      ctx.print('No hooks registered.\nConfigure hooks in settings.json or plugin manifests.');
+      return;
+    }
+    ctx.print('Registered hooks:\n' + lines.join('\n'));
+  },
+});
+
+// ─── Plugins ─────────────────────────────────────────────────
+
+registerCommand({
+  name: '/plugins',
+  aliases: ['/plugin'],
+  description: 'List or manage plugins',
+  usage: '/plugins [reload]',
+  async handler(args, ctx) {
+    const registry = ctx.getPluginRegistry?.();
+    if (!registry) {
+      ctx.print('Plugin system not initialized.\nPlace plugins in .friday/plugins/ or ~/.friday/plugins/');
+      return;
+    }
+
+    if (args?.trim() === 'reload') {
+      const lifecycle = ctx.getPluginLifecycle?.();
+      if (lifecycle) {
+        await lifecycle.reloadAll(ctx.cwd);
+        ctx.print('Plugins reloaded.');
+      }
+      return;
+    }
+
+    const plugins = registry.getAll();
+    if (plugins.length === 0) {
+      ctx.print('No plugins installed.\nPlace plugins in .friday/plugins/ or ~/.friday/plugins/');
+      return;
+    }
+    const lines = plugins.map((p: any) => {
+      const statusIcon = p.enabled ? '✓' : '✗';
+      const skillCount = p.skills?.size ?? 0;
+      const agentCount = p.agents?.size ?? 0;
+      return `  ${statusIcon} ${p.manifest.name}@${p.manifest.version}  ${skillCount} skills  ${agentCount} agents`;
+    });
+    ctx.print('Plugins:\n' + lines.join('\n'));
+  },
+});
+
+// ─── Insights ────────────────────────────────────────────────
+
+registerCommand({
+  name: '/insights',
+  description: 'Analyze codebase and provide insights',
+  usage: '/insights [security|performance|complexity]',
+  handler(args, ctx) {
+    const focus = args?.trim() || 'general';
+    const prompts: Record<string, string> = {
+      security: 'Analyze this codebase for security vulnerabilities. Check for OWASP Top 10 issues, hardcoded secrets, unsafe dependencies, and insecure patterns. Provide actionable recommendations.',
+      performance: 'Analyze this codebase for performance issues. Check for N+1 queries, unnecessary re-renders, memory leaks, blocking operations, and inefficient algorithms. Provide actionable recommendations.',
+      complexity: 'Analyze this codebase for code complexity issues. Identify overly complex functions, high cyclomatic complexity, deep nesting, and code duplication. Suggest simplifications.',
+      general: 'Analyze this codebase and provide key insights about: architecture quality, potential issues, test coverage gaps, dependency health, and improvement opportunities. Be concise and actionable.',
+    };
+    const prompt = prompts[focus] ?? prompts.general;
+    ctx.setPermissionMode('plan');
+    ctx.sendMessage(prompt);
+  },
+});
+
+// ─── Shortcuts ───────────────────────────────────────────────
+
+registerCommand({
+  name: '/shortcuts',
+  aliases: ['/keys'],
+  description: 'Show keyboard shortcuts',
+  handler(_args, ctx) {
+    ctx.print([
+      '╭─ Keyboard Shortcuts ────────────────╮',
+      '│ Ctrl+C      Abort / Exit             │',
+      '│ Ctrl+O      Toggle verbose            │',
+      '│ Ctrl+T      Toggle context viewer     │',
+      '│ Ctrl+R      Reverse search history    │',
+      '│ Ctrl+B      Background tasks          │',
+      '│ Shift+Tab   Cycle permission modes    │',
+      '│ Up/Down     Navigate history           │',
+      '│ Tab         Autocomplete               │',
+      '╰──────────────────────────────────────╯',
+    ].join('\n'));
   },
 });
 

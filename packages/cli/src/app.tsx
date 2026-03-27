@@ -93,6 +93,9 @@ export function App({ settings, initialPrompt, options }: AppProps) {
     applyCompaction: any;
     agentEngine: any;
     estimateTokenCount: any;
+    mcpManager: any;
+    pluginRegistry: any;
+    pluginLifecycle: any;
   } | null>(null);
 
   // ─── Initialization ────────────────────────────────────────
@@ -239,7 +242,35 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         applyCompaction: core.applyCompaction,
         agentEngine,
         estimateTokenCount: core.estimateTokenCount,
+        mcpManager: null,
+        pluginRegistry: null,
+        pluginLifecycle: null,
       };
+
+      // Initialize MCP servers (non-blocking)
+      if (settings.mcpServers && Object.keys(settings.mcpServers).length > 0) {
+        const mcpManager = new core.McpServerManager(settings.mcpServers);
+        coreRef.current.mcpManager = mcpManager;
+        mcpManager.connectAll().then((statuses: import('@fridaycode/core').McpServerStatus[]) => {
+          const connected = statuses.filter((s: import('@fridaycode/core').McpServerStatus) => s.connected);
+          if (connected.length > 0) {
+            // Register MCP tools into toolRegistry
+            const mcpTools = mcpManager.createToolAdapters();
+            for (const tool of mcpTools) {
+              toolRegistry.register(tool);
+            }
+          }
+        }).catch(() => { /* MCP init is non-critical */ });
+      }
+
+      // Initialize plugins (non-blocking)
+      try {
+        const pluginRegistry = new core.PluginRegistry();
+        const pluginLifecycle = new core.PluginLifecycle(pluginRegistry, hooks);
+        coreRef.current.pluginRegistry = pluginRegistry;
+        coreRef.current.pluginLifecycle = pluginLifecycle;
+        pluginLifecycle.initialize(process.cwd()).catch(() => { /* plugin init non-critical */ });
+      } catch { /* plugins non-critical */ }
 
       // Auto-detect model if none set
       if (!currentModel) {
@@ -628,6 +659,10 @@ export function App({ settings, initialPrompt, options }: AppProps) {
             });
           },
           getTokenCount: () => tokenCount,
+          getMcpManager: () => coreRef.current?.mcpManager,
+          getHooks: () => coreRef.current?.hooks,
+          getPluginRegistry: () => coreRef.current?.pluginRegistry,
+          getPluginLifecycle: () => coreRef.current?.pluginLifecycle,
         });
         if (handled) return;
       }
@@ -798,6 +833,8 @@ export function App({ settings, initialPrompt, options }: AppProps) {
             gitBranch={gitBranch}
             permissionMode={permissionMode}
             turnDuration={turnDuration}
+            sessionName={sessionName}
+            mcpServerCount={coreRef.current?.mcpManager?.getConnectedServers()?.length}
           />
           <Prompt
             onSubmit={handleSubmit}

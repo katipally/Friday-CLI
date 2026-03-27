@@ -130,5 +130,9 @@ export {
   PluginLifecycle,
 } from './plugins/index.js';
 
+// ─── MCP ────────────────────────────────────────────────────
+export { McpClient, McpServerManager } from './mcp/index.js';
+export type { McpToolDefinition, McpResource, McpPrompt, McpServerStatus } from './mcp/index.js';
+
 // ─── Telemetry ───────────────────────────────────────────────
 export { TelemetryCollector } from './telemetry/index.js';
