@@ -88,6 +88,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   const abortRef = useRef<AbortController>(new AbortController());
   const sessionRef = useRef<Session | null>(null);
   const memoryContextRef = useRef<string>('');
+  const detectedModelRef = useRef<string>('');
   const coreRef = useRef<{
     toolRegistry: import('@fridaycode/shared').Tool extends unknown ? any : never;
     permissions: any;
@@ -290,6 +291,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
           setAvailableModels(models);
           if (models.length > 0) {
             setCurrentModel(models[0].id);
+            detectedModelRef.current = models[0].id;
           }
         } catch {
           // Provider might not be available (e.g., Ollama not running)
@@ -352,7 +354,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         let assistantContent = '';
         let toolCalls: Message['toolCalls'] = [];
 
-        const modelToUse = currentModel || 'llama3.1';
+        const modelToUse = currentModel || detectedModelRef.current || 'llama3.1';
 
         const chatOptions = {
           model: modelToUse,
@@ -371,6 +373,15 @@ export function App({ settings, initialPrompt, options }: AppProps) {
               case 'text':
                 assistantContent += chunk.content ?? '';
                 setStreamContent((prev) => prev + (chunk.content ?? ''));
+                break;
+              case 'thinking':
+                // Show thinking indicator (reasoning models like qwen3)
+                setStreamContent((prev) => {
+                  if (!prev.includes('🧠 ')) {
+                    return '🧠 *thinking...*\n' + prev;
+                  }
+                  return prev;
+                });
                 break;
               case 'tool_use':
                 if (chunk.toolCall) {
@@ -709,6 +720,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   // ─── Model Switcher Handlers ───────────────────────────────
   const handleModelSelect = useCallback((modelId: string) => {
     setCurrentModel(modelId);
+    detectedModelRef.current = modelId;
     addSystemMessage(`Model switched to ${modelId}`);
     setState('idle');
   }, []);

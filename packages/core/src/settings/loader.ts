@@ -77,8 +77,13 @@ export function loadSettings(projectPath?: string): Settings {
     managedSettings as Record<string, unknown>,
   );
 
-  const parsed = settingsSchema.parse(merged);
-  return parsed as unknown as Settings;
+  const parsed = settingsSchema.safeParse(merged);
+  if (!parsed.success) {
+    // Fallback to defaults on validation failure instead of crashing
+    console.error('Warning: settings validation failed, using defaults:', parsed.error.message);
+    return settingsSchema.parse(DEFAULT_SETTINGS) as unknown as Settings;
+  }
+  return parsed.data as unknown as Settings;
 }
 
 /**

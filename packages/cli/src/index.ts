@@ -197,6 +197,21 @@ async function runPipeMode(
   }
 
   const provider = createProvider(providerConfig);
+
+  // Auto-detect model if none configured
+  let modelToUse = typedSettings.activeModel;
+  if (!modelToUse) {
+    try {
+      const models = await provider.listModels();
+      if (models.length > 0) {
+        modelToUse = models[0].id;
+      }
+    } catch {
+      // Fall back to a common default
+      modelToUse = 'llama3.1';
+    }
+  }
+
   const toolRegistry = createDefaultToolRegistry();
   const permissionRules = [
     ...typedSettings.permissions.allow.map((t: string) => ({ action: 'allow' as const, tool: t })),
@@ -207,7 +222,7 @@ async function runPipeMode(
 
   let output = '';
   const chatOptions: import('@fridaycode/shared').ChatOptions = {
-    model: typedSettings.activeModel,
+    model: modelToUse,
     provider: providerConfig.type,
     messages: [{ role: 'user', content: fullPrompt }],
     tools: toolRegistry.getDefinitions(),

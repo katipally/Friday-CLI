@@ -26,7 +26,7 @@ interface OllamaTagsResponse {
 
 interface OllamaChatChunk {
   model: string;
-  message?: { role: string; content: string; tool_calls?: OllamaToolCall[] };
+  message?: { role: string; content: string; thinking?: string; tool_calls?: OllamaToolCall[] };
   done: boolean;
   total_duration?: number;
   prompt_eval_count?: number;
@@ -107,8 +107,13 @@ export class OllamaProvider extends BaseProvider {
             },
           };
         }
-      } else if (data.message?.content) {
-        yield { type: 'text', content: data.message.content };
+      } else {
+        if (data.message?.thinking) {
+          yield { type: 'thinking', content: data.message.thinking };
+        }
+        if (data.message?.content) {
+          yield { type: 'text', content: data.message.content };
+        }
       }
       yield {
         type: 'done',
@@ -206,6 +211,11 @@ export class OllamaProvider extends BaseProvider {
 
       if (data.message?.content) {
         return { type: 'text', content: data.message.content };
+      }
+
+      // Handle thinking tokens from reasoning models (qwen3, etc.)
+      if (data.message?.thinking) {
+        return { type: 'thinking', content: data.message.thinking };
       }
 
       if (data.done) {
