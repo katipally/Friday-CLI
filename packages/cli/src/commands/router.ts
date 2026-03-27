@@ -22,6 +22,21 @@ export interface CommandContext {
   exit: () => void;
   /** Compact conversation context */
   compact: () => Promise<void>;
+  /** Session operations */
+  resumeSession: (sessionId: string) => void;
+  renameSession: (name: string) => void;
+  rewindToMessage: (index: number) => void;
+  forkSession: () => void;
+  /** Get message count */
+  getMessageCount: () => number;
+  /** Send a prompt to the AI */
+  sendMessage: (prompt: string) => void;
+  /** Set permission mode */
+  setPermissionMode: (mode: 'default' | 'acceptAll' | 'plan') => void;
+  /** Toggle verbose */
+  toggleVerbose: () => void;
+  /** Get token counts */
+  getTokenCount: () => { input: number; output: number };
 }
 
 export interface SlashCommand {

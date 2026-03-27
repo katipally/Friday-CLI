@@ -66,6 +66,7 @@ export {
 // ─── Memory ──────────────────────────────────────────────────
 export {
   loadMemoryFiles,
+  resolveImports,
   loadAutoMemory,
   saveAutoMemory,
   loadRules,

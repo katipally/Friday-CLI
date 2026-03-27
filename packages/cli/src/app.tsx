@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import type { Settings, Message, AgentInstance, ToolContext, ModelProvider, Model } from '@fridaycode/shared';
+import type { Settings, Message, AgentInstance, ToolContext, ModelProvider, Model, Session } from '@fridaycode/shared';
 import type { CliOptions } from './index.js';
 
 // Components
@@ -24,6 +24,8 @@ import './themes/light.js';
 import './themes/cyberpunk.js';
 import './themes/dracula.js';
 import { execSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 interface AppProps {
   settings: Settings;
@@ -61,7 +63,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   const [showWelcome, setShowWelcome] = useState(!initialPrompt);
   const [currentModel, setCurrentModel] = useState(settings.activeModel);
   const [currentProvider, setCurrentProvider] = useState(settings.activeProvider);
-  const [backgroundTasks] = useState<AgentInstance[]>([]);
+  const [backgroundTasks, setBackgroundTasks] = useState<AgentInstance[]>([]);
   const [showContext, setShowContext] = useState(false);
   const [pendingPermission, setPendingPermission] = useState<PendingPermission | null>(null);
   const [toolStatus, setToolStatus] = useState<ToolStatus | null>(null);
@@ -74,18 +76,23 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   const [turnDuration, setTurnDuration] = useState(0);
   const [gitBranch, setGitBranch] = useState('');
   const [promptSuggestion, setPromptSuggestion] = useState('');
+  const [sessionName, setSessionName] = useState<string | undefined>(undefined);
 
   // Refs for mutable state in closures
   const providerRef = useRef<ModelProvider | null>(null);
   const allMessagesRef = useRef<Message[]>([]);
   const abortRef = useRef<AbortController>(new AbortController());
+  const sessionRef = useRef<Session | null>(null);
+  const memoryContextRef = useRef<string>('');
   const coreRef = useRef<{
     toolRegistry: import('@fridaycode/shared').Tool extends unknown ? any : never;
     permissions: any;
     hooks: any;
-    session: any;
+    sessionMod: any;
     prepareCompactionPrompt: any;
     applyCompaction: any;
+    agentEngine: any;
+    estimateTokenCount: any;
   } | null>(null);
 
   // ─── Initialization ────────────────────────────────────────
@@ -151,15 +158,87 @@ export function App({ settings, initialPrompt, options }: AppProps) {
       ];
       const permissions = new core.PermissionEngine(settings.permissionMode, permissionRules);
       const hooks = new core.HookEngineImpl();
-      const session = core.createSession(process.cwd(), 'interactive');
+
+      // Register settings-defined hooks
+      if (settings.hooks) {
+        for (const [event, defs] of Object.entries(settings.hooks)) {
+          for (const def of defs) {
+            hooks.register({ ...def, event: event as any });
+          }
+        }
+      }
+
+      // Create or resume session
+      let session: Session;
+      if (options.session) {
+        const resumed = core.resumeSession(process.cwd(), options.session);
+        if (resumed) {
+          session = resumed;
+          allMessagesRef.current = resumed.messages;
+          setMessages(resumed.messages);
+          setShowWelcome(false);
+        } else {
+          session = core.createSession(process.cwd(), 'interactive');
+        }
+      } else if (options.resume) {
+        const sessions = core.listSessions(process.cwd());
+        if (sessions.length > 0) {
+          const resumed = core.resumeSession(process.cwd(), sessions[0].id);
+          if (resumed) {
+            session = resumed;
+            allMessagesRef.current = resumed.messages;
+            setMessages(resumed.messages);
+            setShowWelcome(false);
+          } else {
+            session = core.createSession(process.cwd(), 'interactive');
+          }
+        } else {
+          session = core.createSession(process.cwd(), 'interactive');
+        }
+      } else {
+        session = core.createSession(process.cwd(), 'interactive');
+      }
+      sessionRef.current = session;
+      setSessionName(session.name);
+
+      // Dispatch SessionStart hook
+      hooks.dispatch({ event: 'SessionStart', sessionId: session.id }).catch(() => {});
+
+      // Load memory context (FRIDAY.md + auto-memory + rules)
+      try {
+        const memoryFiles = core.loadMemoryFiles(process.cwd());
+        const memContext = core.resolveImports(memoryFiles);
+        const autoMemory = core.loadAutoMemory(process.cwd());
+        const parts: string[] = [];
+        if (memContext) parts.push(memContext);
+        if (autoMemory) parts.push(`\n# Auto-learned context\n${autoMemory}`);
+        memoryContextRef.current = parts.join('\n');
+      } catch {
+        // Memory loading is non-critical
+      }
+
+      // Create AgentEngine for background tasks
+      const agentEngine = new core.AgentEngine({
+        provider,
+        toolRegistry,
+        settings,
+        onStream: (chunk, agentId) => {
+          // Could update background task UI here
+        },
+        onMessage: (message, agentId) => {
+          // Could log background messages here
+        },
+      });
 
       coreRef.current = {
         toolRegistry,
         permissions,
         hooks,
-        session,
+        sessionMod: core,
         prepareCompactionPrompt: core.prepareCompactionPrompt,
         applyCompaction: core.applyCompaction,
+        agentEngine,
+        estimateTokenCount: core.estimateTokenCount,
       };
 
       // Auto-detect model if none set
@@ -195,12 +274,18 @@ export function App({ settings, initialPrompt, options }: AppProps) {
     }
 
     const provider = providerRef.current;
-    const { toolRegistry, permissions, hooks, session } = coreRef.current;
+    const { toolRegistry, permissions, hooks, sessionMod } = coreRef.current;
 
     abortRef.current = new AbortController();
     const userMsg: Message = { role: 'user', content, timestamp: Date.now() };
     allMessagesRef.current = [...allMessagesRef.current, userMsg];
     setMessages((prev) => [...prev, userMsg]);
+
+    // Persist to session
+    if (sessionRef.current && sessionMod) {
+      try { sessionMod.appendMessage(sessionRef.current, userMsg); } catch { /* non-critical */ }
+    }
+
     setState('streaming');
     setStreamContent('');
     setTurnDuration(0);
@@ -211,6 +296,14 @@ export function App({ settings, initialPrompt, options }: AppProps) {
       let continueLoop = true;
       let turns = 0;
       const maxTurns = options.maxTurns ?? settings.compactMessageThreshold ?? 50;
+
+      // Inject memory context as system message if first turn
+      if (memoryContextRef.current && loopMessages.length <= 2) {
+        loopMessages = [
+          { role: 'system' as const, content: memoryContextRef.current, timestamp: Date.now() },
+          ...loopMessages,
+        ];
+      }
 
       while (continueLoop && turns < maxTurns) {
         turns++;
@@ -281,6 +374,11 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         };
         loopMessages = [...loopMessages, assistantMsg];
 
+        // Persist assistant message to session
+        if (sessionRef.current && coreRef.current?.sessionMod) {
+          try { coreRef.current.sessionMod.appendMessage(sessionRef.current, assistantMsg); } catch { /* non-critical */ }
+        }
+
         if (!toolCalls || toolCalls.length === 0) {
           continueLoop = false;
           break;
@@ -291,9 +389,12 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         for (const toolCall of toolCalls) {
           setToolStatus({ name: toolCall.name, status: 'running' });
 
+          // Dispatch PreToolUse hook
+          hooks.dispatch({ event: 'PreToolUse', toolName: toolCall.name, toolInput: toolCall.input, sessionId: sessionRef.current?.id }).catch(() => {});
+
           const context = {
             workingDir: process.cwd(),
-            sessionId: session.id,
+            sessionId: sessionRef.current?.id ?? '',
             permissions,
             hooks,
             settings,
@@ -308,6 +409,9 @@ export function App({ settings, initialPrompt, options }: AppProps) {
             );
             result.toolCallId = toolCall.id;
             setToolStatus({ name: toolCall.name, status: 'done' });
+
+            // Dispatch PostToolUse hook
+            hooks.dispatch({ event: 'PostToolUse', toolName: toolCall.name, toolResult: result, sessionId: sessionRef.current?.id }).catch(() => {});
 
             const toolMsg: Message = {
               role: 'tool',
@@ -337,6 +441,16 @@ export function App({ settings, initialPrompt, options }: AppProps) {
       setStreamContent('');
       setToolStatus(null);
       setTurnDuration(Date.now() - turnStart);
+
+      // Auto-compaction notification
+      if (coreRef.current?.estimateTokenCount && !settings.disableAutoCompact) {
+        const estimatedTokens = coreRef.current.estimateTokenCount(loopMessages);
+        const threshold = (settings.maxTokens ?? 8192) * 3; // warn at ~75% of a 4x context window
+        if (estimatedTokens > threshold) {
+          addSystemMessage(`◆ Context is getting large (~${Math.round(estimatedTokens / 1000)}k tokens). Consider /compact to summarize.`);
+        }
+      }
+
       // Show a prompt suggestion after response
       const suggestions = [
         'Try: "explain this code"',
@@ -389,6 +503,34 @@ export function App({ settings, initialPrompt, options }: AppProps) {
     addSystemMessage('Context compacted.');
   }
 
+  // ─── @ File Mention Expansion ────────────────────────────
+  function expandFileMentions(content: string): string {
+    // Match @path/to/file patterns
+    const mentionRegex = /@([\w./_-]+\.\w+)/g;
+    let expanded = content;
+    let match: RegExpExecArray | null;
+    const seen = new Set<string>();
+
+    while ((match = mentionRegex.exec(content)) !== null) {
+      const filePath = match[1];
+      if (seen.has(filePath)) continue;
+      seen.add(filePath);
+
+      const resolved = path.resolve(process.cwd(), filePath);
+      try {
+        if (fs.existsSync(resolved)) {
+          const fileContent = fs.readFileSync(resolved, 'utf-8');
+          const truncated = fileContent.length > 10000
+            ? fileContent.slice(0, 10000) + '\n...(truncated)'
+            : fileContent;
+          expanded += `\n\n<file path="${filePath}">\n${truncated}\n</file>`;
+        }
+      } catch { /* file not readable, skip */ }
+    }
+
+    return expanded;
+  }
+
   // ─── Handle Submit ─────────────────────────────────────────
   const handleSubmit = useCallback(
     async (content: string) => {
@@ -424,7 +566,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
 
         const handled = await executeCommand(content, {
           cwd: process.cwd(),
-          sessionId: coreRef.current?.session?.id,
+          sessionId: sessionRef.current?.id,
           model: currentModel,
           provider: currentProvider,
           print: (text: string) => addSystemMessage(text),
@@ -436,15 +578,67 @@ export function App({ settings, initialPrompt, options }: AppProps) {
           },
           exit: () => exit(),
           compact: () => compact(),
+          resumeSession: (sessionId: string) => {
+            if (!coreRef.current?.sessionMod) return;
+            const resumed = coreRef.current.sessionMod.resumeSession(process.cwd(), sessionId);
+            if (resumed) {
+              sessionRef.current = resumed;
+              allMessagesRef.current = resumed.messages;
+              setMessages(resumed.messages);
+              setSessionName(resumed.name);
+            }
+          },
+          renameSession: (name: string) => {
+            if (sessionRef.current) {
+              sessionRef.current.name = name;
+              setSessionName(name);
+              if (coreRef.current?.sessionMod) {
+                coreRef.current.sessionMod.saveSession(sessionRef.current);
+              }
+            }
+          },
+          rewindToMessage: (index: number) => {
+            if (sessionRef.current && coreRef.current?.sessionMod) {
+              coreRef.current.sessionMod.rewindSession(sessionRef.current, index);
+              allMessagesRef.current = sessionRef.current.messages;
+              setMessages([...sessionRef.current.messages]);
+            } else {
+              allMessagesRef.current = allMessagesRef.current.slice(0, index);
+              setMessages([...allMessagesRef.current]);
+            }
+          },
+          forkSession: () => {
+            if (sessionRef.current && coreRef.current?.sessionMod) {
+              const forked = coreRef.current.sessionMod.forkSession(sessionRef.current);
+              sessionRef.current = forked;
+              setSessionName(forked.name);
+            }
+          },
+          getMessageCount: () => allMessagesRef.current.length,
+          sendMessage: (prompt: string) => {
+            setTimeout(() => sendMessage(prompt), 50);
+          },
+          setPermissionMode: (mode: 'default' | 'acceptAll' | 'plan') => {
+            setPermissionMode(mode);
+          },
+          toggleVerbose: () => {
+            setVerbose(v => {
+              addSystemMessage(!v ? 'Verbose mode on' : 'Verbose mode off');
+              return !v;
+            });
+          },
+          getTokenCount: () => tokenCount,
         });
         if (handled) return;
       }
 
       if (showWelcome) setShowWelcome(false);
 
-      await sendMessage(content);
+      // Expand @ file mentions
+      const expanded = expandFileMentions(content);
+      await sendMessage(expanded);
     },
-    [currentModel, currentProvider, showWelcome, engineReady, availableModels],
+    [currentModel, currentProvider, showWelcome, engineReady, availableModels, tokenCount],
   );
 
   // ─── Permission Handlers ───────────────────────────────────
@@ -505,6 +699,25 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         addSystemMessage(`Permission mode → ${next}`);
         return next;
       });
+    }
+    // Ctrl+B: Show background tasks
+    if (key.ctrl && input === 'b') {
+      const engine = coreRef.current?.agentEngine;
+      if (engine) {
+        const instances = engine.getAllInstances();
+        const running = instances.filter((i: AgentInstance) => i.status === 'running');
+        if (running.length === 0) {
+          addSystemMessage('No background tasks running.');
+        } else {
+          const lines = running.map((i: AgentInstance) =>
+            `  ${i.id.slice(0, 8)}  ${i.definition.name ?? 'task'}  ${i.status}`
+          );
+          addSystemMessage('Background tasks:\n' + lines.join('\n'));
+        }
+        setBackgroundTasks(instances);
+      } else {
+        addSystemMessage('No background tasks running.');
+      }
     }
   });
 

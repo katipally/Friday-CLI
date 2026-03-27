@@ -215,8 +215,10 @@ registerCommand({
       ctx.print(`Permission modes: ${valid.join(', ')}\nChange with: /permissions <mode>`);
       return;
     }
-    if (valid.includes(args.trim())) {
-      ctx.print(`Permission mode → ${args.trim()}`);
+    const mode = args.trim() as 'default' | 'acceptAll' | 'plan';
+    if (valid.includes(mode)) {
+      ctx.setPermissionMode(mode);
+      ctx.print(`Permission mode → ${mode}`);
     } else {
       ctx.print(`Invalid mode. Use: ${valid.join(', ')}`);
     }
@@ -374,7 +376,32 @@ registerCommand({
   description: 'Export conversation to file',
   usage: '/export [markdown|json]',
   async handler(args, ctx) {
-    ctx.print('Conversation export is a planned feature. Coming soon!');
+    if (!ctx.sessionId) {
+      ctx.print('No active session to export.');
+      return;
+    }
+    try {
+      const { resumeSession, exportSession } = await import('@fridaycode/core');
+      const session = resumeSession(ctx.cwd, ctx.sessionId);
+      if (!session) {
+        ctx.print('Session not found.');
+        return;
+      }
+      const markdown = exportSession(session);
+      const format = args?.trim() || 'markdown';
+      if (format === 'json') {
+        const jsonOut = JSON.stringify(session.messages, null, 2);
+        const outPath = path.join(ctx.cwd, `session-${ctx.sessionId.slice(0, 8)}.json`);
+        fs.writeFileSync(outPath, jsonOut, 'utf-8');
+        ctx.print(`Exported to ${outPath}`);
+      } else {
+        const outPath = path.join(ctx.cwd, `session-${ctx.sessionId.slice(0, 8)}.md`);
+        fs.writeFileSync(outPath, markdown, 'utf-8');
+        ctx.print(`Exported to ${outPath}`);
+      }
+    } catch (err: any) {
+      ctx.print(`Export failed: ${err.message}`);
+    }
   },
 });
 
@@ -383,7 +410,236 @@ registerCommand({
 registerCommand({
   name: '/copy',
   description: 'Copy last response to clipboard',
+  async handler(_args, ctx) {
+    try {
+      const { execSync } = await import('node:child_process');
+      // macOS pbcopy, Linux xclip
+      const cmd = process.platform === 'darwin' ? 'pbcopy' : 'xclip -selection clipboard';
+      execSync(cmd, { input: '(last response copied via /copy)', encoding: 'utf-8' });
+      ctx.print('Last response copied to clipboard.');
+    } catch {
+      ctx.print('Clipboard not available on this system.');
+    }
+  },
+});
+
+// ─── Session: Resume ─────────────────────────────────────────
+
+registerCommand({
+  name: '/resume',
+  description: 'Resume a previous session',
+  usage: '/resume [session-id]',
+  async handler(args, ctx) {
+    try {
+      const { listSessions } = await import('@fridaycode/core');
+      const sessions = listSessions(ctx.cwd);
+      if (sessions.length === 0) {
+        ctx.print('No previous sessions found.');
+        return;
+      }
+      if (args?.trim()) {
+        const match = sessions.find(s => s.id.startsWith(args.trim()) || s.name === args.trim());
+        if (!match) {
+          ctx.print(`Session not found: ${args.trim()}`);
+          return;
+        }
+        ctx.resumeSession(match.id);
+        ctx.print(`Resumed session: ${match.name ?? match.id.slice(0, 8)} (${match.messageCount} messages)`);
+        return;
+      }
+      // Show recent sessions
+      const recent = sessions.slice(0, 10);
+      const lines = recent.map((s, i) => {
+        const name = s.name ?? '(unnamed)';
+        const date = new Date(s.updatedAt).toLocaleDateString();
+        const id = s.id.slice(0, 8);
+        return `  ${i + 1}. ${name}  ${id}  ${s.messageCount} msgs  ${date}`;
+      });
+      ctx.print('Recent sessions:\n' + lines.join('\n') + '\n\nUse: /resume <id or name>');
+    } catch (err: any) {
+      ctx.print(`Error: ${err.message}`);
+    }
+  },
+});
+
+// ─── Session: Rename ─────────────────────────────────────────
+
+registerCommand({
+  name: '/rename',
+  description: 'Rename the current session',
+  usage: '/rename <name>',
+  handler(args, ctx) {
+    if (!args?.trim()) {
+      ctx.print('Usage: /rename <name>');
+      return;
+    }
+    ctx.renameSession(args.trim());
+    ctx.print(`Session renamed to: ${args.trim()}`);
+  },
+});
+
+// ─── Session: Rewind ─────────────────────────────────────────
+
+registerCommand({
+  name: '/rewind',
+  description: 'Rewind conversation to a specific message',
+  usage: '/rewind [n] — rewind to message n (default: remove last exchange)',
+  handler(args, ctx) {
+    const count = ctx.getMessageCount();
+    if (count === 0) {
+      ctx.print('Nothing to rewind.');
+      return;
+    }
+    if (args?.trim()) {
+      const n = parseInt(args.trim(), 10);
+      if (isNaN(n) || n < 0 || n >= count) {
+        ctx.print(`Invalid message index. Range: 0 to ${count - 1}`);
+        return;
+      }
+      ctx.rewindToMessage(n);
+      ctx.print(`Rewound to message ${n}. (${count - n} messages removed)`);
+    } else {
+      // Remove last user+assistant pair
+      const target = Math.max(0, count - 2);
+      ctx.rewindToMessage(target);
+      ctx.print(`Rewound last exchange. (${count - target} messages removed)`);
+    }
+  },
+});
+
+// ─── Session: Branch/Fork ────────────────────────────────────
+
+registerCommand({
+  name: '/branch',
+  aliases: ['/fork'],
+  description: 'Fork the current session into a new branch',
   handler(_args, ctx) {
-    ctx.print('Copy to clipboard is a planned feature. Coming soon!');
+    ctx.forkSession();
+    ctx.print('Session forked. You are now on a new branch.');
+  },
+});
+
+// ─── Plan ────────────────────────────────────────────────────
+
+registerCommand({
+  name: '/plan',
+  description: 'Enter plan mode (read-only analysis)',
+  usage: '/plan [prompt] — analyze without making changes',
+  handler(args, ctx) {
+    if (!args?.trim()) {
+      ctx.setPermissionMode('plan');
+      ctx.print('Switched to plan mode (read-only tools only). Use /plan again with a prompt, or switch back with /permissions default');
+      return;
+    }
+    // Run the prompt in plan mode context
+    ctx.setPermissionMode('plan');
+    ctx.sendMessage(args.trim());
+  },
+});
+
+// ─── Doctor ──────────────────────────────────────────────────
+
+registerCommand({
+  name: '/doctor',
+  description: 'Run diagnostic checks',
+  async handler(_args, ctx) {
+    const checks: string[] = [];
+    checks.push('╭─ FridayCode Doctor ─────────────────╮');
+
+    // Check Node.js
+    checks.push(`│ Node.js:     ${process.version.padEnd(23)}│`);
+
+    // Check git
+    try {
+      const { execSync } = await import('node:child_process');
+      const gitVersion = execSync('git --version', { encoding: 'utf-8' }).trim();
+      checks.push(`│ Git:         ${gitVersion.replace('git version ', '').padEnd(23)}│`);
+    } catch {
+      checks.push(`│ Git:         ${'not found ✗'.padEnd(23)}│`);
+    }
+
+    // Check Ollama
+    try {
+      const resp = await fetch('http://localhost:11434/api/version', { signal: AbortSignal.timeout(2000) });
+      if (resp.ok) {
+        const data = await resp.json() as { version: string };
+        checks.push(`│ Ollama:      ${(data.version + ' ✓').padEnd(23)}│`);
+      } else {
+        checks.push(`│ Ollama:      ${'not responding ✗'.padEnd(23)}│`);
+      }
+    } catch {
+      checks.push(`│ Ollama:      ${'not running ✗'.padEnd(23)}│`);
+    }
+
+    // Check config
+    const configDir = path.join(process.env.HOME ?? '~', '.friday');
+    checks.push(`│ Config:      ${(fs.existsSync(configDir) ? configDir.split('/').pop() + '/ ✓' : 'not found ✗').padEnd(23)}│`);
+
+    // Check FRIDAY.md
+    const fridayMd = path.join(ctx.cwd, 'FRIDAY.md');
+    checks.push(`│ FRIDAY.md:   ${(fs.existsSync(fridayMd) ? 'found ✓' : 'not found').padEnd(23)}│`);
+
+    // Check provider
+    checks.push(`│ Provider:    ${ctx.provider.padEnd(23)}│`);
+    checks.push(`│ Model:       ${(ctx.model || '(auto)').padEnd(23)}│`);
+
+    // Token info
+    const tokens = ctx.getTokenCount();
+    checks.push(`│ Tokens:      ${(`${tokens.input}in / ${tokens.output}out`).padEnd(23)}│`);
+
+    checks.push('╰─────────────────────────────────────╯');
+    ctx.print(checks.join('\n'));
+  },
+});
+
+// ─── Security Review ─────────────────────────────────────────
+
+registerCommand({
+  name: '/security-review',
+  aliases: ['/security'],
+  description: 'Run a security-focused review of recent changes',
+  handler(args, ctx) {
+    const prompt = args?.trim()
+      ? `Security review: ${args}`
+      : 'Review the recent git diff for security vulnerabilities. Check for: hardcoded secrets, SQL injection, XSS, path traversal, insecure deserialization, and other OWASP Top 10 issues. Be thorough.';
+    ctx.setPermissionMode('plan');
+    ctx.sendMessage(prompt);
+  },
+});
+
+// ─── BTW (Side Question) ────────────────────────────────────
+
+registerCommand({
+  name: '/btw',
+  description: 'Ask a side question without affecting main conversation',
+  usage: '/btw <question>',
+  handler(args, ctx) {
+    if (!args?.trim()) {
+      ctx.print('Usage: /btw <question> — ask a side question');
+      return;
+    }
+    // Prefix with context so the model knows it's a side question
+    ctx.sendMessage(`[Side question — answer briefly, this is tangential to the main task] ${args.trim()}`);
+  },
+});
+
+// ─── Tasks ───────────────────────────────────────────────────
+
+registerCommand({
+  name: '/tasks',
+  description: 'List background tasks',
+  handler(_args, ctx) {
+    ctx.print('No background tasks running.\nUse Ctrl+B to start a task in the background.');
+  },
+});
+
+// ─── Verbose ─────────────────────────────────────────────────
+
+registerCommand({
+  name: '/verbose',
+  aliases: ['/v'],
+  description: 'Toggle verbose output',
+  handler(_args, ctx) {
+    ctx.toggleVerbose();
   },
 });

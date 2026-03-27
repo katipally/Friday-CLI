@@ -56,24 +56,23 @@ export async function main(argv: string[]): Promise<void> {
   if (opts.plan) settings.permissionMode = 'plan';
   if (opts.maxTurns) settings.compactMessageThreshold = opts.maxTurns;
 
-  // Handle session resume
-  if (opts.resume || opts.session) {
-    const { listSessions, resumeSession } = await import('@fridaycode/core');
-    if (opts.session) {
-      const session = resumeSession(process.cwd(), opts.session);
-      if (!session) {
-        console.error(`Session "${opts.session}" not found.`);
-        process.exit(1);
-      }
-    } else {
-      const sessions = listSessions(process.cwd());
-      if (sessions.length === 0) {
-        console.error('No previous sessions found.');
-        process.exit(1);
-      }
-      // Resume most recent
-      resumeSession(process.cwd(), sessions[sessions.length - 1].id);
+  // Handle session resume — validate session exists but let app.tsx handle actual resume
+  if (opts.session) {
+    const { resumeSession } = await import('@fridaycode/core');
+    const session = resumeSession(process.cwd(), opts.session);
+    if (!session) {
+      console.error(`Session "${opts.session}" not found.`);
+      process.exit(1);
     }
+  } else if (opts.resume) {
+    const { listSessions } = await import('@fridaycode/core');
+    const sessions = listSessions(process.cwd());
+    if (sessions.length === 0) {
+      console.error('No previous sessions found.');
+      process.exit(1);
+    }
+    // Pass the most recent session ID to app
+    opts.session = sessions[0].id;
   }
 
   // Pipe mode: non-interactive
