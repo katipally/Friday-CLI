@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { getPromptBarColor, getSpinnerFrame } from '../branding/spinner.js';
+import { getCompletions, type CompletionResult } from '../input/completion.js';
 
 type PermissionMode = 'default' | 'acceptAll' | 'plan';
 
@@ -9,32 +10,26 @@ interface PromptProps {
   onSubmit: (value: string) => void;
   disabled?: boolean;
   loading?: boolean;
-  model?: string;
-  provider?: string;
   permissionMode?: PermissionMode;
   promptBarColor?: string;
-  turnDuration?: number;
   suggestion?: string;
   vimMode?: boolean;
+  workingDir?: string;
+  availableModels?: string[];
+  registeredCommands?: string[];
 }
-
-const MODE_LABELS: Record<PermissionMode, { icon: string; label: string; color: string }> = {
-  default:   { icon: '⏵',  label: '',                 color: '#64748B' },
-  acceptAll: { icon: '⏵⏵', label: 'auto-accept on',   color: '#A3E635' },
-  plan:      { icon: '⏸',  label: 'plan mode',        color: '#FBBF24' },
-};
 
 export function Prompt({
   onSubmit,
   disabled,
   loading,
-  model,
-  provider,
   permissionMode = 'default',
   promptBarColor: barColorProp,
-  turnDuration,
   suggestion,
   vimMode,
+  workingDir = process.cwd(),
+  availableModels,
+  registeredCommands,
 }: PromptProps) {
   const [value, setValue] = useState('');
   const [history, setHistory] = useState<string[]>([]);
@@ -47,8 +42,12 @@ export function Prompt({
   const [multilineMode, setMultilineMode] = useState(false);
   const [multilineBuffer, setMultilineBuffer] = useState<string[]>([]);
 
+  // Autocomplete state
+  const [completions, setCompletions] = useState<string[]>([]);
+  const [completionIndex, setCompletionIndex] = useState(-1);
+  const [completionPrefix, setCompletionPrefix] = useState('');
+
   const barColor = barColorProp || getPromptBarColor();
-  const modeInfo = MODE_LABELS[permissionMode];
 
   // Animate spinner during loading
   useEffect(() => {
@@ -58,6 +57,23 @@ export function Prompt({
     }, 80);
     return () => clearInterval(interval);
   }, [loading]);
+
+  // Fetch completions as user types
+  useEffect(() => {
+    if (disabled || loading || searchMode || !value) {
+      setCompletions([]);
+      setCompletionIndex(-1);
+      return;
+    }
+    let cancelled = false;
+    getCompletions(value, workingDir, availableModels).then((result) => {
+      if (cancelled) return;
+      setCompletions(result.items);
+      setCompletionPrefix(result.prefix);
+      setCompletionIndex(-1);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [value, workingDir, availableModels, disabled, loading, searchMode]);
 
   // Update search results when query changes
   useEffect(() => {
@@ -85,9 +101,8 @@ export function Prompt({
         return;
       }
 
-      // Multiline: Shift+Enter (detected in useInput) adds to buffer
+      // Multiline: submit the full multiline buffer
       if (multilineMode) {
-        // Submit the full multiline buffer
         const full = [...multilineBuffer, input].join('\n');
         setMultilineBuffer([]);
         setMultilineMode(false);
@@ -102,6 +117,8 @@ export function Prompt({
       if (!input.trim()) return;
       setHistory((prev) => [input, ...prev]);
       setHistoryIndex(-1);
+      setCompletions([]);
+      setCompletionIndex(-1);
       onSubmit(input);
       setValue('');
     },
@@ -111,10 +128,30 @@ export function Prompt({
   useInput((input, key) => {
     if (disabled || loading) return;
 
+    // Tab: cycle through completions
+    if (key.tab && !searchMode) {
+      if (completions.length > 0) {
+        const nextIdx = (completionIndex + 1) % completions.length;
+        setCompletionIndex(nextIdx);
+        // Replace the prefix portion of input with the completion
+        const trimmed = value.trimStart();
+        if (trimmed.startsWith('/')) {
+          // Slash command: replace whole first word
+          const rest = trimmed.includes(' ') ? trimmed.slice(trimmed.indexOf(' ')) : '';
+          setValue(completions[nextIdx] + rest);
+        } else {
+          // File path or other: replace last word
+          const words = value.split(/\s+/);
+          words[words.length - 1] = completions[nextIdx];
+          setValue(words.join(' '));
+        }
+      }
+      return;
+    }
+
     // Ctrl+R: toggle reverse search
     if (key.ctrl && input === 'r') {
       if (searchMode) {
-        // Cycle through search results
         if (searchResults.length > 0) {
           const next = (searchIndex + 1) % searchResults.length;
           setSearchIndex(next);
@@ -127,7 +164,7 @@ export function Prompt({
       return;
     }
 
-    // Escape: exit search mode or multiline mode
+    // Escape: exit search mode, multiline mode, or dismiss completions
     if (key.escape) {
       if (searchMode) {
         setSearchMode(false);
@@ -138,6 +175,10 @@ export function Prompt({
       if (multilineMode) {
         setMultilineMode(false);
         setMultilineBuffer([]);
+        return;
+      }
+      if (completionIndex >= 0) {
+        setCompletionIndex(-1);
         return;
       }
     }
@@ -169,7 +210,6 @@ export function Prompt({
           setValue('');
         }
       } else {
-        // Add current line and prepare for next
         setMultilineBuffer(prev => [...prev, value]);
         setValue('');
       }
@@ -198,18 +238,24 @@ export function Prompt({
 
   // Determine if input starts with ! (shell mode)
   const isShellMode = value.startsWith('!');
+  const isSlashCmd = value.startsWith('/');
 
   if (loading) {
     return (
       <Box flexDirection="column">
         <Box paddingLeft={0}>
-          <Text color={barColor} bold>{'▌'}</Text>
+          <Text color={barColor} bold>{'\u258c'}</Text>
           <Text> </Text>
           <Text>{spinnerText}</Text>
         </Box>
       </Box>
     );
   }
+
+  // Ghost completion text (show first match when not actively cycling)
+  const ghostText = (!searchMode && !multilineMode && completions.length > 0 && completionIndex < 0 && value)
+    ? completions[0].slice(completionPrefix.length)
+    : '';
 
   return (
     <Box flexDirection="column">
@@ -231,27 +277,27 @@ export function Prompt({
         <Box flexDirection="column" paddingLeft={2}>
           {multilineBuffer.map((line, i) => (
             <Box key={i}>
-              <Text color="#64748B">{i === 0 ? '┌ ' : '│ '}</Text>
+              <Text color="#64748B">{i === 0 ? '\u250c ' : '\u2502 '}</Text>
               <Text>{line}</Text>
             </Box>
           ))}
           <Box>
-            <Text color="#64748B">{'└ '}</Text>
+            <Text color="#64748B">{'\u2514 '}</Text>
             <Text dimColor italic>(Ctrl+J to add line, Enter to submit)</Text>
           </Box>
         </Box>
       )}
 
-      {/* Prompt bar with model/mode info */}
+      {/* Prompt input line */}
       <Box paddingLeft={0}>
-        <Text color={barColor} bold>{'▌'}</Text>
+        <Text color={barColor} bold>{'\u258c'}</Text>
         <Text> </Text>
         {isShellMode ? (
           <Text color="#FB923C" bold>{'$ '}</Text>
         ) : multilineMode ? (
-          <Text color="#22D3EE" bold>{'┊ '}</Text>
+          <Text color="#22D3EE" bold>{'\u250a '}</Text>
         ) : (
-          <Text color={barColor} bold>{'❯ '}</Text>
+          <Text color={barColor} bold>{'\u276f '}</Text>
         )}
         <TextInput
           value={value}
@@ -259,27 +305,28 @@ export function Prompt({
           onSubmit={handleSubmit}
           placeholder={disabled ? '' : searchMode ? 'type to search...' : 'Message Friday...'}
         />
-      </Box>
-
-      {/* Sub-line: mode indicator + model */}
-      <Box paddingLeft={2} gap={1}>
-        {permissionMode !== 'default' && (
-          <Text color={modeInfo.color}>
-            {modeInfo.icon} {modeInfo.label}
-          </Text>
-        )}
-        {multilineMode && (
-          <Text color="#22D3EE">multiline</Text>
-        )}
-        {model && (
-          <Text dimColor>{model}</Text>
-        )}
-        {turnDuration !== undefined && turnDuration > 0 && (
-          <Text dimColor>· took {formatDuration(turnDuration)}</Text>
+        {ghostText && (
+          <Text color="#475569">{ghostText}</Text>
         )}
       </Box>
 
-      {/* Suggestion ghost text */}
+      {/* Autocomplete dropdown (show up to 5 matches) */}
+      {completions.length > 0 && value && !searchMode && !multilineMode && (isSlashCmd || value.includes('@')) && (
+        <Box flexDirection="column" paddingLeft={4}>
+          {completions.slice(0, 6).map((item, i) => (
+            <Box key={item}>
+              <Text color={i === completionIndex ? '#A78BFA' : '#64748B'} bold={i === completionIndex}>
+                {i === completionIndex ? '\u25b8 ' : '  '}{item}
+              </Text>
+            </Box>
+          ))}
+          {completions.length > 6 && (
+            <Text dimColor>  ...{completions.length - 6} more (Tab to cycle)</Text>
+          )}
+        </Box>
+      )}
+
+      {/* Suggestion hint (only when input is empty and no completions showing) */}
       {suggestion && !value && !searchMode && !multilineMode && (
         <Box paddingLeft={4}>
           <Text color="#475569" italic>{suggestion}</Text>
@@ -287,12 +334,4 @@ export function Prompt({
       )}
     </Box>
   );
-}
-
-function formatDuration(ms: number): string {
-  const secs = Math.floor(ms / 1000);
-  if (secs < 60) return `${secs}s`;
-  const mins = Math.floor(secs / 60);
-  const rem = secs % 60;
-  return `${mins}m ${rem}s`;
 }

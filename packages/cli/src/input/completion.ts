@@ -3,7 +3,7 @@ import { join, resolve, dirname, basename } from 'node:path';
 
 /**
  * Tab completion engine.
- * Supports slash commands, file paths, and model names.
+ * Supports slash commands, @file mentions, file paths, and model names.
  */
 
 export interface CompletionResult {
@@ -15,7 +15,8 @@ const SLASH_COMMANDS = [
   '/model', '/provider', '/clear', '/compact', '/fork', '/rewind', '/export',
   '/diff', '/cost', '/permissions', '/config', '/memory', '/skills', '/agents',
   '/plugin', '/theme', '/vim', '/status', '/help', '/exit', '/quit',
-  '/init', '/resume', '/context', '/mcp',
+  '/init', '/resume', '/context', '/mcp', '/hooks', '/plugins', '/insights',
+  '/shortcuts',
 ];
 
 /**
@@ -30,10 +31,23 @@ export async function getCompletions(
 
   // Slash command completion
   if (trimmed.startsWith('/')) {
+    const firstWord = trimmed.split(/\s/)[0];
     const matches = SLASH_COMMANDS.filter((cmd) =>
-      cmd.startsWith(trimmed.split(/\s/)[0]),
+      cmd.startsWith(firstWord),
     );
-    return { items: matches, prefix: trimmed.split(/\s/)[0] };
+    return { items: matches, prefix: firstWord };
+  }
+
+  // @file mention completion
+  const atMatch = trimmed.match(/@([\w./_-]*)$/);
+  if (atMatch) {
+    const partial = atMatch[1];
+    const fileResults = await getFileCompletions(partial || './', workingDir);
+    // Prefix completions with @ for display
+    return {
+      items: fileResults.items.map(f => `@${partial ? dirname(partial) + '/' : ''}${f}`.replace(/^@\.\//, '@')),
+      prefix: `@${partial}`,
+    };
   }
 
   // File path completion (when input looks like a path)

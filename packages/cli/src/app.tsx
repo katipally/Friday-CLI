@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
+import { Box, Text, Static, useInput, useApp } from 'ink';
 import type { Settings, Message, AgentInstance, ToolContext, ModelProvider, Model, Session } from '@fridaycode/shared';
 import type { CliOptions } from './index.js';
 
 // Components
 import { Output } from './components/Output.js';
+import { MessageRow } from './components/Output.js';
 import { Prompt } from './components/Prompt.js';
 import { StatusLine } from './components/StatusBar.js';
 import { WelcomeScreen } from './branding/welcome.js';
@@ -78,6 +79,9 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   const [promptSuggestion, setPromptSuggestion] = useState('');
   const [sessionName, setSessionName] = useState<string | undefined>(undefined);
 
+  // Track completed messages for Static rendering (perf optimization)
+  const [completedMsgCount, setCompletedMsgCount] = useState(0);
+
   // Refs for mutable state in closures
   const providerRef = useRef<ModelProvider | null>(null);
   const allMessagesRef = useRef<Message[]>([]);
@@ -123,6 +127,13 @@ export function App({ settings, initialPrompt, options }: AppProps) {
 
     initEngine();
   }, []);
+
+  // Commit messages to static rendering when a turn completes
+  useEffect(() => {
+    if ((state === 'idle' || state === 'welcome') && messages.length > completedMsgCount) {
+      setCompletedMsgCount(messages.length);
+    }
+  }, [state, messages.length]);
 
   async function initEngine() {
     try {
@@ -759,6 +770,10 @@ export function App({ settings, initialPrompt, options }: AppProps) {
   // ─── Render ────────────────────────────────────────────────
   const isLoading = state === 'streaming' || state === 'loading' || state === 'tool-running';
 
+  // Split messages: completed (Static) vs active (dynamic)
+  const completedMessages = messages.slice(0, completedMsgCount);
+  const activeMessages = messages.slice(completedMsgCount);
+
   return (
     <Box flexDirection="column">
       {/* Welcome screen */}
@@ -784,10 +799,21 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         />
       )}
 
-      {/* Messages + streaming output */}
+      {/* Completed messages — permanently rendered, never re-rendered (perf win) */}
+      {state !== 'model-select' && completedMessages.length > 0 && (
+        <Static items={completedMessages}>
+          {(msg, i) => (
+            <Box key={`msg-${i}-${msg.timestamp ?? i}`}>
+              <MessageRow message={msg} verbose={verbose} />
+            </Box>
+          )}
+        </Static>
+      )}
+
+      {/* Active messages + streaming output (dynamic, re-rendered each frame) */}
       {state !== 'model-select' && (
         <Output
-          messages={messages}
+          messages={activeMessages}
           streamContent={streamContent}
           state={state}
           toolStatus={toolStatus ?? undefined}
@@ -822,7 +848,7 @@ export function App({ settings, initialPrompt, options }: AppProps) {
         />
       )}
 
-      {/* Status line + prompt */}
+      {/* Tmux-style status bar + prompt (always at bottom) */}
       {state !== 'model-select' && (
         <Box flexDirection="column" marginTop={0}>
           <StatusLine
@@ -840,11 +866,9 @@ export function App({ settings, initialPrompt, options }: AppProps) {
             onSubmit={handleSubmit}
             disabled={state === 'permission' || state === 'error'}
             loading={isLoading}
-            model={currentModel}
-            provider={currentProvider}
             permissionMode={permissionMode}
-            turnDuration={turnDuration}
             suggestion={promptSuggestion}
+            availableModels={availableModels.map(m => m.id)}
           />
         </Box>
       )}

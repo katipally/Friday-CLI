@@ -329,7 +329,7 @@ function InlineFormatted({ text }: { text: string }) {
 }
 
 // ─── Message Row ─────────────────────────────────────────────
-function MessageRow({ message, verbose }: { message: Message; verbose?: boolean }) {
+export function MessageRow({ message, verbose }: { message: Message; verbose?: boolean }) {
   const content = typeof message.content === 'string'
     ? message.content
     : Array.isArray(message.content)

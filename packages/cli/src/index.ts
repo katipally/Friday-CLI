@@ -92,30 +92,69 @@ export async function main(argv: string[]): Promise<void> {
     }
     // Pass skill as initial prompt with skill flag to the interactive app
     const initialPrompt = promptArgs.length > 0 ? promptArgs.join(' ') : undefined;
+
+    // Enter alternate screen buffer (vim/tmux-style dedicated view)
+    process.stdout.write('\x1b[?1049h\x1b[H\x1b[2J');
+    process.stdout.write('\x1b[?25l'); // Hide cursor (Ink manages its own)
+
     const { waitUntilExit } = render(
       React.createElement(App, {
         settings,
         initialPrompt: initialPrompt ?? `Run skill: ${opts.skill}`,
         options: opts,
       }),
+      {
+        exitOnCtrlC: false,
+        incrementalRendering: true,
+      },
     );
-    await waitUntilExit();
+
+    try {
+      await waitUntilExit();
+    } finally {
+      // Restore terminal: show cursor + exit alternate screen
+      process.stdout.write('\x1b[?25h');
+      process.stdout.write('\x1b[?1049l');
+    }
     return;
   }
 
   // If prompt provided as argument, run one-shot
   const initialPrompt = promptArgs.length > 0 ? promptArgs.join(' ') : undefined;
 
-  // Interactive mode: render Ink app
+  // Enter alternate screen buffer (vim/tmux-style dedicated view)
+  process.stdout.write('\x1b[?1049h\x1b[H\x1b[2J');
+  process.stdout.write('\x1b[?25l'); // Hide cursor (Ink manages its own)
+
+  // Ensure terminal is restored on unexpected exit
+  const restoreTerminal = () => {
+    process.stdout.write('\x1b[?25h');
+    process.stdout.write('\x1b[?1049l');
+  };
+  process.on('exit', restoreTerminal);
+  process.on('SIGTERM', () => { restoreTerminal(); process.exit(0); });
+  process.on('SIGHUP', () => { restoreTerminal(); process.exit(0); });
+
+  // Interactive mode: render Ink app with alternate screen
   const { waitUntilExit } = render(
     React.createElement(App, {
       settings,
       initialPrompt,
       options: opts,
     }),
+    {
+      exitOnCtrlC: false,
+      incrementalRendering: true,
+    },
   );
 
-  await waitUntilExit();
+  try {
+    await waitUntilExit();
+  } finally {
+    // Restore terminal: show cursor + exit alternate screen
+    process.stdout.write('\x1b[?25h');
+    process.stdout.write('\x1b[?1049l');
+  }
 }
 
 async function runPipeMode(
