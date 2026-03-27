@@ -312,7 +312,7 @@ registerCommand({
   description: 'Set prompt bar color',
   usage: '/color [violet|blue|green|yellow|red|orange|pink|cyan|teal|purple|indigo|amber]',
   async handler(args, ctx) {
-    const { setPromptBarColor, PROMPT_BAR_COLORS } = await import('../mascot/spider.js');
+    const { setPromptBarColor, PROMPT_BAR_COLORS } = await import('../branding/spinner.js');
     if (!args) {
       const available = Object.keys(PROMPT_BAR_COLORS).join(', ');
       ctx.print(`Available colors: ${available}\nAlso accepts hex: /color #FF5733`);

@@ -382,7 +382,7 @@ function MessageRow({ message, verbose }: { message: Message; verbose?: boolean 
     case 'system':
       return (
         <Box marginTop={1}>
-          <Text color="#64748B" italic>{'  ⌽ '}{content}</Text>
+          <Text color="#64748B" italic>{'  ◆ '}{content}</Text>
         </Box>
       );
 

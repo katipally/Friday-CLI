@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { renderWebStrand } from '../mascot/spider.js';
 
 interface StatusBarProps {
   model: string;
@@ -17,7 +16,7 @@ interface StatusBarProps {
 export function StatusBar({ model, provider, tokenCount, state }: StatusBarProps) {
   return (
     <Box paddingX={0} marginTop={0}>
-      <Text>{renderWebStrand(60)}</Text>
+      <Text dimColor>{'─'.repeat(60)}</Text>
     </Box>
   );
 }

@@ -42,7 +42,6 @@ const DEFAULT_SETTINGS: SettingsInput = {
   vimMode: false,
   prefersReducedMotion: false,
   statusLine: true,
-  showSpider: true,
   hooks: {},
   mcpServers: {},
   telemetryOptIn: false,

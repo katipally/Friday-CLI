@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { getPromptBarColor, getSpinnerFrame } from '../mascot/spider.js';
+import { getPromptBarColor, getSpinnerFrame } from '../branding/spinner.js';
 
 type PermissionMode = 'default' | 'acceptAll' | 'plan';
 
@@ -127,7 +127,7 @@ export function Prompt({
           <Text dimColor>{model}</Text>
         )}
         {turnDuration !== undefined && turnDuration > 0 && (
-          <Text dimColor>· wove for {formatDuration(turnDuration)}</Text>
+          <Text dimColor>· took {formatDuration(turnDuration)}</Text>
         )}
       </Box>
 

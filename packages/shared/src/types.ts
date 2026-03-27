@@ -298,7 +298,6 @@ export interface Settings {
   vimMode: boolean;
   prefersReducedMotion: boolean;
   statusLine: boolean;
-  showSpider: boolean;
 
   // Hooks
   hooks: Partial<Record<HookEvent, HookDefinition[]>>;
@@ -342,13 +341,4 @@ export interface TelemetryEvent {
   timestamp: number;
 }
 
-// ─── Spider Expression Types ─────────────────────────────────
 
-export type SpiderExpression =
-  | 'idle'
-  | 'thinking'
-  | 'success'
-  | 'error'
-  | 'working'
-  | 'greeting'
-  | 'confused';

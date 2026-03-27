@@ -1,4 +1,4 @@
-# 🕷️ FridayCode
+# ◆ FridayCode
 
 **Open-source agentic coding CLI — a model-agnostic alternative to Claude Code**
 
@@ -18,7 +18,6 @@ FridayCode is an AI-powered coding assistant that lives in your terminal. It sup
 - **Memory System** — Project-level `FRIDAY.md`, auto-memory, and `.friday/rules/` files
 - **Git Integration** — Worktrees, AI commit attribution, branch management, PR diff analysis
 - **Terminal UI** — Ink-based TUI with streaming output, diff viewer, model switcher, task list
-- **Spider Mascot** — Meet Friday 🕷️ — animated ASCII spider with 7 expression states
 - **Vim Mode** — Optional vi keybindings for input
 - **Themes** — Dark and light themes with the FridayCode color palette
 - **Slash Commands** — 20+ commands for model switching, context management, and more
@@ -156,7 +155,7 @@ packages/
 │   └── telemetry/   # Opt-in anonymous stats
 └── cli/             # Terminal UI
     ├── components/  # Ink components (Output, Prompt, StatusBar, etc.)
-    ├── mascot/      # Friday the spider 🕷️
+    ├── branding/    # Logo, welcome screen, spinner
     ├── input/       # Vim mode, history, tab completion
     ├── themes/      # Dark/light themes
     ├── commands/    # Slash command router + handlers

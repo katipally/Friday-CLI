@@ -52,7 +52,6 @@ export const settingsSchema = z.object({
   vimMode: z.boolean().default(false),
   prefersReducedMotion: z.boolean().default(false),
   statusLine: z.boolean().default(true),
-  showSpider: z.boolean().default(true),
 
   // Hooks
   hooks: z.record(z.array(hookDefSchema)).default({}),

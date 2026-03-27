@@ -7,7 +7,7 @@ import type { CliOptions } from './index.js';
 import { Output } from './components/Output.js';
 import { Prompt } from './components/Prompt.js';
 import { StatusLine } from './components/StatusBar.js';
-import { WelcomeScreen } from './mascot/welcome.js';
+import { WelcomeScreen } from './branding/welcome.js';
 import { PermissionPrompt } from './components/PermissionPrompt.js';
 import { TaskList } from './components/TaskList.js';
 import { ContextViewer } from './components/ContextViewer.js';
@@ -17,7 +17,7 @@ import { ModelSwitcher } from './components/ModelSwitcher.js';
 import { executeCommand } from './commands/index.js';
 import { isOnboarded, markOnboarded, detectOllama } from './onboarding/wizard.js';
 import { setTheme } from './themes/engine.js';
-import { getPromptBarColor } from './mascot/spider.js';
+import { getPromptBarColor } from './branding/spinner.js';
 // Initialize themes
 import './themes/dark.js';
 import './themes/light.js';

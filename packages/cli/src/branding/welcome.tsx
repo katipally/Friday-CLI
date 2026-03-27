@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { Settings } from '@fridaycode/shared';
-import { renderLargeSpider, renderWebStrand } from './spider.js';
+import { renderLogo, renderCompactLogo } from './logo.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -19,10 +19,10 @@ function detectProjectInfo(cwd: string): { name: string; tech: string; gitBranch
     if (fs.existsSync(path.join(cwd, 'package.json'))) {
       const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf-8'));
       const deps = Object.keys(pkg.dependencies ?? {}).concat(Object.keys(pkg.devDependencies ?? {}));
-      if (deps.includes('react')) tech = 'React';
+      if (deps.includes('next')) tech = 'Next.js';
+      else if (deps.includes('react')) tech = 'React';
       else if (deps.includes('vue')) tech = 'Vue';
       else if (deps.includes('svelte')) tech = 'Svelte';
-      else if (deps.includes('next')) tech = 'Next.js';
       else if (deps.includes('express')) tech = 'Express';
       else tech = 'Node.js';
     } else if (fs.existsSync(path.join(cwd, 'Cargo.toml'))) tech = 'Rust';
@@ -38,7 +38,25 @@ function detectProjectInfo(cwd: string): { name: string; tech: string; gitBranch
   return { name, tech, gitBranch };
 }
 
-// Random startup tip
+function countSkills(cwd: string): number {
+  const builtIn = 4; // batch, debug, loop, simplify
+  try {
+    const skillDir = path.join(cwd, '.friday', 'skills');
+    if (fs.existsSync(skillDir)) {
+      return builtIn + fs.readdirSync(skillDir).filter(f => f.endsWith('.md')).length;
+    }
+  } catch { /* ignore */ }
+  return builtIn;
+}
+
+function countMcpServers(settings: Settings): number {
+  return Object.keys(settings.mcpServers ?? {}).length;
+}
+
+function hasFridayMd(cwd: string): boolean {
+  return fs.existsSync(path.join(cwd, 'FRIDAY.md'));
+}
+
 const TIPS = [
   'Use @filename to reference files in your prompt',
   'Type !command to run shell commands directly',
@@ -50,29 +68,27 @@ const TIPS = [
 ];
 
 export function WelcomeScreen({ settings, cwd }: WelcomeScreenProps) {
-  const spider = settings.showSpider !== false ? renderLargeSpider('greeting') : '';
   const { name: projectName, tech, gitBranch } = detectProjectInfo(cwd);
   const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
-  const webLine = renderWebStrand(56);
+  const skillCount = countSkills(cwd);
+  const mcpCount = countMcpServers(settings);
+  const hasMemory = hasFridayMd(cwd);
 
   return (
-    <Box flexDirection="column" alignItems="center" paddingY={0}>
-      {settings.showSpider !== false && (
-        <Text>{spider}</Text>
-      )}
-
+    <Box flexDirection="column" paddingY={0}>
+      {/* ASCII art logo */}
       <Box flexDirection="column" alignItems="center">
-        <Text color="#8B5CF6" bold>
-          {'  '}◆ FridayCode
-        </Text>
+        <Text>{renderLogo()}</Text>
         <Text dimColor>v0.1.0</Text>
       </Box>
 
+      {/* Separator */}
       <Box marginTop={0}>
-        <Text>{webLine}</Text>
+        <Text dimColor>{'─'.repeat(60)}</Text>
       </Box>
 
-      <Box marginTop={1} gap={1} flexDirection="column" alignItems="center">
+      {/* Provider / model info */}
+      <Box marginTop={1} gap={1} flexDirection="column" paddingLeft={2}>
         <Box gap={2}>
           <Text>
             <Text dimColor>provider </Text>
@@ -93,17 +109,33 @@ export function WelcomeScreen({ settings, cwd }: WelcomeScreenProps) {
           {gitBranch && (
             <Text>
               <Text dimColor>branch </Text>
-              <Text color="#FBBF24">{gitBranch}</Text>
+              <Text color="#FBBF24">⎇ {gitBranch}</Text>
             </Text>
+          )}
+        </Box>
+
+        {/* Loaded resources */}
+        <Box gap={2}>
+          <Text dimColor>
+            {skillCount} skills
+          </Text>
+          {mcpCount > 0 && (
+            <Text dimColor>
+              {mcpCount} MCP server{mcpCount !== 1 ? 's' : ''}
+            </Text>
+          )}
+          {hasMemory && (
+            <Text dimColor>FRIDAY.md loaded</Text>
           )}
         </Box>
       </Box>
 
-      <Box marginTop={1} flexDirection="column" alignItems="center">
+      {/* Tip + help */}
+      <Box marginTop={1} flexDirection="column" paddingLeft={2}>
         <Text dimColor italic>
-          {'  '}💡 {tip}
+          💡 {tip}
         </Text>
-        <Box marginTop={0} gap={1}>
+        <Box marginTop={0}>
           <Text dimColor>
             Type a message · <Text color="#64748B">/help</Text> for commands · <Text color="#64748B">Ctrl+C</Text> to exit
           </Text>
